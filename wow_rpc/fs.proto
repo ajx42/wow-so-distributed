@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package wowfs;
+
+service WowFS {
+    rpc TestCall(Cmd) returns(Ack) {}
+}
+
+
+message Ack {
+    int32 Ok = 1;
+}
+
+message Cmd {
+    int32 Sup = 1;
+}
