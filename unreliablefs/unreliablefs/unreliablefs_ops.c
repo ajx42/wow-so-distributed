@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
-#include <vector>
 
 #include <sys/ioctl.h>
 #include <sys/file.h>
@@ -75,6 +74,18 @@ const char *fuse_op_name[] = {
 
 extern int error_inject(const char* path, fuse_op operation);
 
+
+void convert_path(char * file_path)
+{
+    const char *local_prefix = "/tmp/wowfs_local/";
+    const char *remote_prefix = "/tmp/wowfs_remote/";
+
+    if (strncmp(file_path, local_prefix, strlen(local_prefix)) == 0) {
+        memmove(file_path + strlen(remote_prefix), file_path + strlen(local_prefix), strlen(file_path) - strlen(local_prefix) + 1);
+        memmove(file_path, remote_prefix, strlen(remote_prefix));
+    }
+}
+
 int unreliable_lstat(const char *path, struct stat *buf)
 {
     FILE * file;
@@ -111,8 +122,13 @@ int unreliable_getattr(const char *path, struct stat *buf)
         return ret;
     }
 
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+
     memset(buf, 0, sizeof(struct stat));
-    if (lstat(path, buf) == -1) {
+    //if (lstat(path, buf) == -1) {
+    if (lstat(converted_path, buf) == -1) {
         return -errno;
     }
 
@@ -615,10 +631,16 @@ int unreliable_getxattr(const char *path, const char *name,
         return ret;
     }
 
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+
 #ifdef __APPLE__
-    ret = getxattr(path, name, value, size, 0, XATTR_NOFOLLOW);
+    ret = getxattr(converted_path, name, value, size, 0, XATTR_NOFOLLOW);
+    //ret = getxattr(path, name, value, size, 0, XATTR_NOFOLLOW);
 #else
-    ret = getxattr(path, name, value, size);
+    ret = getxattr(converted_path, name, value, size);
+    //ret = getxattr(path, name, value, size);
 #endif /* __APPLE__ */
     if (ret == -1) {
         return -errno;
@@ -693,8 +715,11 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
         return ret;
     }
 
-    //DIR *dir = opendir("/tmp/wowfs_remote/");
-    DIR *dir = opendir(path);
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+    DIR *dir = opendir(converted_path);
+    //DIR *dir = opendir(path);
 
     if (!dir) {
         return -errno;
@@ -719,8 +744,12 @@ int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         return ret;
     }
 
-    DIR *dp = opendir(path);
-    //DIR *dp = opendir("/tmp/wowfs_remote/");
+    //DIR *dp = opendir(path);
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+    DIR *dp = opendir(converted_path);
+
     if (dp == NULL) {
 	return -errno;
     }
