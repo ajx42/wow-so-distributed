@@ -442,7 +442,11 @@ int unreliable_fsync(const char *path, int datasync, struct fuse_file_info *fi)
     }
 
     if (datasync) {
+#ifdef __APPLE__
+        ret = fcntl(fi->fh, F_FULLFSYNC);
+#else
         ret = fdatasync(fi->fh);
+#endif
         if (ret == -1) {
             return -errno;
         }
@@ -457,8 +461,13 @@ int unreliable_fsync(const char *path, int datasync, struct fuse_file_info *fi)
 }
 
 #ifdef HAVE_XATTR
+#ifdef __APPLE__
+int unreliable_setxattr(const char *path, const char *name,
+                        const char *value, size_t size, int flags, [[gnu::maybe_unused]]uint32_t pos)
+#else
 int unreliable_setxattr(const char *path, const char *name,
                         const char *value, size_t size, int flags)
+#endif
 {
     int ret = error_inject(path, OP_SETXATTR);
     if (ret == -ERRNO_NOOP) {
@@ -479,8 +488,13 @@ int unreliable_setxattr(const char *path, const char *name,
     return 0;
 }
 
+#ifdef __APPLE__
+int unreliable_getxattr(const char *path, const char *name,
+                        char *value, size_t size, [[gnu::maybe_unused]]uint32_t junk)
+#else
 int unreliable_getxattr(const char *path, const char *name,
                         char *value, size_t size)
+#endif
 {
     int ret = error_inject(path, OP_GETXATTR);
     if (ret == -ERRNO_NOOP) {
@@ -629,7 +643,11 @@ int unreliable_fsyncdir(const char *path, int datasync, struct fuse_file_info *f
     }
 
     if (datasync) {
+ #ifdef __APPLE__
+        ret = fcntl(dirfd(dir), F_FULLFSYNC);
+ #else
         ret = fdatasync(dirfd(dir));
+ #endif
         if (ret == -1) {
             return -errno;
         }
