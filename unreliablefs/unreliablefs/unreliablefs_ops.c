@@ -858,7 +858,10 @@ int unreliable_access(const char *path, int mode)
         return ret;
     }
 
-    ret = access(path, mode); 
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+    ret = access(converted_path, mode); 
     if (ret == -1) {
         return -errno;
     }
