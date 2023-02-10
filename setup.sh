@@ -8,7 +8,7 @@ mkdir /tmp/wowfs_remote
 mkdir /tmp/wowfs_remote/subdir
 
 #Mount FUSE fs.
-./build/unreliablefs/unreliablefs /tmp/wowfs -basedir=/tmp/wowfs_local -seed=1618680646
+./build/wowFS/unreliablefs/wowfs /tmp/wowfs -basedir=/tmp/wowfs_local -seed=1618680646
 
 #Write config file
 cat << EOF > /tmp/wowfs/unreliablefs.conf
