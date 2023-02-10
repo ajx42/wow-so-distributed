@@ -137,10 +137,29 @@ int unreliable_getattr(const char *path, struct stat *buf)
     convert_path(converted_path);
 
     memset(buf, 0, sizeof(struct stat));
-    //if (lstat(path, buf) == -1) {
-    if (lstat(converted_path, buf) == -1) {
-        return -errno;
+    
+    //Send request to server for file stat info.
+    struct stat * response = WowManager::Instance().client.DownloadStat(std::string(converted_path));
+
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "getattr recieved\n");
+
+    //Verify response 
+    if(response == nullptr)
+    {
+        fprintf(file, "\tgetattr: NULL\n");
+        return -1;
     }
+    fprintf(file, "\tgetattr inode : %lu\n", response->st_ino);
+    fclose(file);
+    
+    //Copy response to buf.
+    memcpy(buf, response, sizeof(struct stat));
+    free(response);
+
+    //if (lstat(converted_path, buf) == -1) {
+    //   return -errno;
+    //}
 
     return 0;
 }
