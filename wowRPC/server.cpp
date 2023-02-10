@@ -1,5 +1,5 @@
 #include <iostream>
-#include "FSServer.H"
+#include "WowRPCServer.H"
 
 int main()
 {

@@ -21,6 +21,16 @@
 #include "unreliablefs_ops.h"
 
 #define WOWFS_LOG_FILE "/tmp/wowfs_local/log"
+#include <fstream>
+#include <string>
+namespace {
+  void logline(std::string line) {  
+    std::ofstream off("/tmp/logs.unreliable.txt", std::ios_base::app);
+    off << std::string(line) << std::endl;
+    // ping server to demonstrate
+    WowManager::Instance().client.Ping(111);
+  }
+}
 
 const char *fuse_op_name[] = {
     "getattr",
@@ -384,7 +394,8 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
     file = fopen(WOWFS_LOG_FILE, "a");
     fprintf(file, "open %s\n", path);
     fclose(file);
-
+    logline(std::string("wowFS -> open called: ") + std::string(path));
+ 
     int ret = error_inject(path, OP_OPEN);
     if (ret == -ERRNO_NOOP) {
         return 0;
