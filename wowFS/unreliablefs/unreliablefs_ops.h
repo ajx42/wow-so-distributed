@@ -5,8 +5,7 @@
 
 #include <fuse.h>
 
-// including this for testing
-#include "WowRPCClient.H"
+#include "unreliablefs.h"
 
 int unreliable_getattr(const char *, struct stat *);
 int unreliable_readlink(const char *, char *, size_t);
