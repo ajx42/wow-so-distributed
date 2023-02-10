@@ -8,7 +8,6 @@ service WowFS {
     rpc DownloadStat(DownloadRequest) returns (stream DownloadResponse){}
 }
 
-
 message Ack {
     int32 Ok = 1;
 }
