@@ -13,6 +13,7 @@ add_definitions(${FUSE_DEFINITIONS})
 add_executable(${CLIENT_EXEC} ${UNRELIABLEFS_SRC})
 
 target_link_libraries(${CLIENT_EXEC} fs_grpc_proto)
+target_link_libraries(${CLIENT_EXEC} wowrpc)
 target_include_directories(${CLIENT_EXEC} PRIVATE ${FUSE_INCLUDE_DIRS})
 
 message("wowRPC generated binaries will be read from: ${WOW_RPC_BINARY_DIR}")

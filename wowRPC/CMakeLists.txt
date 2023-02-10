@@ -48,8 +48,18 @@ target_link_libraries(fs_grpc_proto
   ${_GRPC_GRPCPP}
   ${_PROTOBUF_LIBPROTOBUF})
 
+# the wowlib!
+add_library(wowrpc WowRPCClient.C)
+
+target_link_libraries(wowrpc
+  ${fs_grpc_proto}
+  ${_REFLECTION}
+  ${_GRPC_GRPCPP}
+  ${_PROTOBUF_LIBPROTOBUF})
+
 add_executable(client client.cpp)
 target_link_libraries(client fs_grpc_proto) 
+target_link_libraries(client wowrpc)
 
 add_executable(server server.cpp)
 target_link_libraries(server fs_grpc_proto)
