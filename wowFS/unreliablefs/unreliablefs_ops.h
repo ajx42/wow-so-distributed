@@ -5,6 +5,9 @@
 
 #include <fuse.h>
 
+// including this for testing
+#include "WowRPCClient.H"
+
 int unreliable_getattr(const char *, struct stat *);
 int unreliable_readlink(const char *, char *, size_t);
 int unreliable_mknod(const char *, mode_t, dev_t);

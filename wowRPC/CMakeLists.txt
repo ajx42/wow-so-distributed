@@ -1,16 +1,7 @@
-cmake_minimum_required(VERSION 3.25.2)
-project(WowRPC LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+project(wow_rpc)
 
 find_package(Threads REQUIRED)
 add_subdirectory(../grpc ${CMAKE_CURRENT_BINARY_DIR}/grpc EXCLUDE_FROM_ALL)
-
 message(STATUS "Using gRPC via add_subdirectory.")
 
 set(_PROTOBUF_LIBPROTOBUF libprotobuf)
@@ -47,9 +38,6 @@ add_custom_command(
         "${fs_proto}"
       DEPENDS "${fs_proto}")
 
-# Include generated *.pb.h files
-include_directories("${CMAKE_CURRENT_BINARY_DIR}")
-message(PROJECT_SOURCE_DIR="${fs_proto_path}")
 add_library(fs_grpc_proto
   ${fs_grpc_srcs}
   ${fs_grpc_hdrs}
@@ -65,4 +53,6 @@ target_link_libraries(client fs_grpc_proto)
 
 add_executable(server server.cpp)
 target_link_libraries(server fs_grpc_proto)
+
+install(TARGETS client server  DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 

@@ -7,7 +7,7 @@
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 
-#include "build/fs.grpc.pb.h"
+#include "fs.grpc.pb.h"
 
 class WowFSServiceImpl final : public wowfs::WowFS::Service
 {
