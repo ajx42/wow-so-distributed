@@ -11,7 +11,7 @@ mkdir /tmp/wowfs_remote/subdir
 ./build/wowFS/unreliablefs/wowfs /tmp/wowfs -basedir=/tmp/wowfs_local -seed=1618680646
 
 #Write config file
-cat << EOF > /tmp/wowfs/unreliablefs.conf
+cat << EOF > /tmp/wowfs_local/unreliablefs.conf
 [errinj_noop]
 op_regexp = .*
 path_regexp = .*
@@ -29,5 +29,5 @@ second sample
 file
 EOF
 
-#Unmount file system
-#umount /tmp/fs
+#Start up file server
+./build/wowRPC/server
