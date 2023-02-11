@@ -682,16 +682,22 @@ int unreliable_getxattr(const char *path, const char *name,
     strcpy(converted_path, path);
     convert_path(converted_path);
 
-#ifdef __APPLE__
-    ret = getxattr(converted_path, name, value, size, 0, XATTR_NOFOLLOW);
-    //ret = getxattr(path, name, value, size, 0, XATTR_NOFOLLOW);
-#else
-    ret = getxattr(converted_path, name, value, size);
-    //ret = getxattr(path, name, value, size);
-#endif /* __APPLE__ */
-    if (ret == -1) {
-        return -errno;
+    //Send request to server for file stat info.
+    int errno_;
+    int response = WowManager::Instance().client.GetXAttr(std::string(converted_path), std::string(name), value, size, &errno_);
+
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "getxattr recieved\n");
+    fprintf(file, "\tgetxattr: response %d\n", response);
+
+    //Verify response 
+    if(response == -1)
+    {
+        fprintf(file, "\tgetxattr: errno %d\n", errno_);
+        fclose(file);
+        return -errno_;
     }
+    fclose(file);
     
     return 0;
 }

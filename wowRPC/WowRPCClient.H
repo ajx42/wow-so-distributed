@@ -16,6 +16,9 @@ public:
   int32_t Ping( int32_t cmd );
 
   int32_t DownloadStat(const std::string& file_name, struct stat* buf, int* errno_);
+//#ifdef HAVE_XATTR
+  int32_t GetXAttr(const std::string& file_path, const std::string& name, char * value, const size_t size, int* errno_);
+//#endif
   int32_t Mkdir(const std::string& dir_name, mode_t mode, int* errno_);
 
 private:

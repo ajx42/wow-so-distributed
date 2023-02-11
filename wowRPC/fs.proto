@@ -6,6 +6,7 @@ service WowFS {
     rpc TestCall(Cmd) returns(Ack) {}
     rpc DownloadFile(DownloadRequest) returns (stream DownloadResponse){}
     rpc DownloadStat(DownloadRequest) returns (stream DownloadResponse){}
+    rpc GetXAttr(GetXAttrRequest) returns (stream DownloadResponse){}
     rpc Mkdir(MkdirRequest) returns (MkdirResponse){}
 }
 
@@ -25,6 +26,12 @@ message DownloadResponse{
     bytes data = 1;
     int32 res = 2;
     int32 errno_ = 3;
+}
+
+message GetXAttrRequest{
+    string file_path = 1; 
+    string name = 2; 
+    int32 size = 3; 
 }
 
 message MkdirRequest{

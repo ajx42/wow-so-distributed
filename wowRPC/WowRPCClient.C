@@ -20,8 +20,7 @@ int32_t WowRPCClient::Ping( int32_t cmd )
 }
 
 //Download struct stat from server for given filepath.
-int WowRPCClient::DownloadStat(const std::string& file_name, struct stat* buf, int* errno_)
-{
+int32_t WowRPCClient::DownloadStat(const std::string& file_name, struct stat* buf, int* errno_){
   wowfs::DownloadRequest request;
   wowfs::DownloadResponse response;
   grpc::ClientContext context;
@@ -40,7 +39,7 @@ int WowRPCClient::DownloadStat(const std::string& file_name, struct stat* buf, i
   if(!status.ok())
   {
       std::cerr << "DownloadStat rpc failed\n";
-      return NULL;
+      return -1;
   }
   
   //Copy and return.
@@ -49,6 +48,40 @@ int WowRPCClient::DownloadStat(const std::string& file_name, struct stat* buf, i
 
   return response.res();
 }
+
+//#ifdef HAVE_XATTR
+int32_t WowRPCClient::GetXAttr(const std::string& file_path, const std::string& name, char * value, const size_t size, int* errno_){
+  using namespace wowfs;
+  GetXAttrRequest request;
+  DownloadResponse response;
+  grpc::ClientContext context;
+
+  //Prepare request
+  request.set_file_path(file_path);
+  request.set_name(name);
+  request.set_size(size);
+
+  //Dispatch
+  auto writer = stub_->GetXAttr(&context, request);
+
+  //Check Response
+  writer->Read(&response);
+
+  grpc::Status status = writer->Finish();
+
+  if(!status.ok())
+  {
+      std::cerr << "DownloadStat rpc failed\n";
+      return -1;
+  }
+
+  //Copy and return
+  memcpy(value, response.data().data(), response.data().size());
+  *errno_ = response.errno_();
+
+  return response.res();
+}
+//#endif
 
 int32_t WowRPCClient::Mkdir(const std::string& dir_name, mode_t mode, int* errno_) {
   wowfs::MkdirRequest request; 
