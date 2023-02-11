@@ -5,6 +5,7 @@
 
 #include <grpcpp/channel.h>
 #include "fs.grpc.pb.h"
+#include <sys/stat.h>
 
 class WowRPCClient
 {
@@ -14,7 +15,8 @@ public:
 
   int32_t Ping( int32_t cmd );
 
-  struct stat * DownloadStat(const std::string& file_name);
+  int32_t DownloadStat(const std::string& file_name, struct stat* buf, int* errno_);
+  int32_t Mkdir(const std::string& dir_name, mode_t mode, int* errno_);
 
 private:
   std::unique_ptr<wowfs::WowFS::Stub> stub_;

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <memory>
 #include <sys/stat.h>
+#include <errno.h>
 
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
@@ -19,6 +20,9 @@ class WowFSServiceImpl final : public wowfs::WowFS::Service
           //grpc::ServerWriter<wowfs::DownloadResponse>*);
   grpc::Status DownloadStat(grpc::ServerContext*, const wowfs::DownloadRequest*, 
           grpc::ServerWriter<wowfs::DownloadResponse>*);
+
+  grpc::Status Mkdir(grpc::ServerContext*, const wowfs::MkdirRequest*, wowfs::MkdirResponse*);
+  
 };
 
 grpc::Status WowFSServiceImpl::TestCall( 
@@ -34,21 +38,31 @@ grpc::Status WowFSServiceImpl::DownloadStat(grpc::ServerContext* context, const 
 {
     //Run lstat operation
     struct stat buf;
-    if (lstat(request->file_name().c_str(), &buf) == -1) {
-        return grpc::Status(grpc::StatusCode::NOT_FOUND, "lstat: File not found.");
-    }
+    int res = lstat(request->file_name().c_str(), &buf);
     
     //Serialize struct
-    std::cerr << "Sending stat, inode : " << buf.st_ino << "\n";
     char * buffer = (char*)malloc(sizeof(buf));
     memcpy(buffer, &buf, sizeof(buf));
     
     //Send struct
     wowfs::DownloadResponse response;
     response.set_data(buffer, sizeof(buf));
+    response.set_res(res);
+    response.set_errno_(errno);
     writer->Write(response);
     
     free(buffer);
 
+    return grpc::Status::OK;
+}
+
+grpc::Status WowFSServiceImpl::Mkdir(grpc::ServerContext* context, const wowfs::MkdirRequest* request, wowfs::MkdirResponse* response)
+{
+    //Run mkdir operation
+    mode_t mode = request->mode();
+    int res = mkdir(request->dir_name().c_str(), mode);
+    response->set_res(res);
+    response->set_errno_(errno);
+    
     return grpc::Status::OK;
 }
