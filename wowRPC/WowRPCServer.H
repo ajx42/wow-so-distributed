@@ -116,9 +116,9 @@ grpc::Status WowFSServiceImpl::Mkdir(grpc::ServerContext* context, const wowfs::
 {
     //Run mkdir operation
     mode_t mode = request->mode();
-    int res = mkdir(request->dir_name().c_str(), mode);
-    response->set_res(res);
-    response->set_errno_(errno);
+    int ret = mkdir(request->dir_name().c_str(), mode);
+    response->set_ret(ret);
+    response->set_server_errno(errno);
     
     return grpc::Status::OK;
 }
