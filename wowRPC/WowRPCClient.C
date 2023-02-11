@@ -51,9 +51,8 @@ int32_t WowRPCClient::DownloadStat(const std::string& file_name, struct stat* bu
 
 //#ifdef HAVE_XATTR
 int32_t WowRPCClient::GetXAttr(const std::string& file_path, const std::string& name, char * value, const size_t size, int* errno_){
-  using namespace wowfs;
-  GetXAttrRequest request;
-  DownloadResponse response;
+  wowfs::GetXAttrRequest request;
+  wowfs::DownloadResponse response;
   grpc::ClientContext context;
 
   //Prepare request
@@ -82,6 +81,29 @@ int32_t WowRPCClient::GetXAttr(const std::string& file_path, const std::string& 
   return response.res();
 }
 //#endif
+
+int32_t WowRPCClient::Access(const std::string& file_path, mode_t mode, int* errno_)
+{
+  wowfs::AccessRequest request;
+  wowfs::AccessResponse response;
+  grpc::ClientContext context;
+
+  // Prepare request
+  request.set_file_path(file_path);
+  request.set_mode(mode);
+
+  // Dispatch
+  auto status = stub_->Access(&context, request, &response);
+  *errno_ = response.errno_();
+
+  // Check response
+  if (!status.ok()) {
+    std::cerr << "Access rpc failed\n";
+    return -1;
+  }
+
+  return response.res();
+}
 
 int32_t WowRPCClient::Mkdir(const std::string& dir_name, mode_t mode, int* errno_) {
   wowfs::MkdirRequest request; 

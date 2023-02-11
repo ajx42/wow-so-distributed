@@ -914,7 +914,9 @@ int unreliable_access(const char *path, int mode)
     char converted_path[100];
     strcpy(converted_path, path);
     convert_path(converted_path);
-    ret = access(converted_path, mode); 
+
+    int errno_;
+    ret = WowManager::Instance().client.Access(std::string(converted_path), mode, &errno_);
     if (ret == -1) {
         fprintf(file, "access %s failed\n", path);
         return -errno;

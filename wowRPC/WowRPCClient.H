@@ -19,6 +19,7 @@ public:
 //#ifdef HAVE_XATTR
   int32_t GetXAttr(const std::string& file_path, const std::string& name, char * value, const size_t size, int* errno_);
 //#endif
+  int32_t Access(const std::string& file_path, mode_t mode, int* errno_);
   int32_t Mkdir(const std::string& dir_name, mode_t mode, int* errno_);
 
 private:
