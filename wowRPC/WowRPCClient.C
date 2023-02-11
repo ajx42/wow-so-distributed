@@ -20,7 +20,7 @@ int32_t WowRPCClient::Ping( int32_t cmd )
 }
 
 //Download struct stat from server for given filepath.
-int WowRPCClient::DownloadStat(const std::string& file_name, struct stat* buf, int* errno_)
+RPCResponse WowRPCClient::DownloadStat(const std::string& file_name, struct stat* buf)
 {
   wowfs::DownloadRequest request;
   wowfs::DownloadResponse response;
@@ -40,17 +40,16 @@ int WowRPCClient::DownloadStat(const std::string& file_name, struct stat* buf, i
   if(!status.ok())
   {
       std::cerr << "DownloadStat rpc failed\n";
-      return NULL;
+      return RPCResponse(-1, -1);
   }
   
   //Copy and return.
   memcpy(buf, response.data().data(), sizeof(struct stat));
-  *errno_ = response.errno_();
 
-  return response.res();
+  return RPCResponse(response.ret(), response.server_errno());
 }
 
-int32_t WowRPCClient::Mkdir(const std::string& dir_name, mode_t mode, int* errno_) {
+RPCResponse WowRPCClient::Mkdir(const std::string& dir_name, mode_t mode) {
   wowfs::MkdirRequest request; 
   wowfs::MkdirResponse response;
   grpc::ClientContext context;
@@ -61,13 +60,12 @@ int32_t WowRPCClient::Mkdir(const std::string& dir_name, mode_t mode, int* errno
 
   // Dispatch
   auto status = stub_->Mkdir(&context, request, &response);
-  *errno_ = response.errno_();
 
   // Check response
   if (!status.ok()) {
     std::cerr << "Mkdir rpc failed\n";
-    return -1;
+    return RPCResponse(-1, -1);
   }
 
-  return response.res();
+  return RPCResponse(response.ret(), response.server_errno());
 }

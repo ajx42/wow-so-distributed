@@ -7,6 +7,12 @@
 #include "fs.grpc.pb.h"
 #include <sys/stat.h>
 
+typedef struct RPCResponse {
+  int32_t ret_;
+  int32_t server_errno_;
+  RPCResponse(int32_t ret, int32_t server_errno) : ret_(ret), server_errno_(server_errno) {}
+} RPCResponse;
+
 class WowRPCClient
 {
 public:
@@ -15,8 +21,8 @@ public:
 
   int32_t Ping( int32_t cmd );
 
-  int32_t DownloadStat(const std::string& file_name, struct stat* buf, int* errno_);
-  int32_t Mkdir(const std::string& dir_name, mode_t mode, int* errno_);
+  RPCResponse DownloadStat(const std::string& file_name, struct stat* buf);
+  RPCResponse Mkdir(const std::string& dir_name, mode_t mode);
 
 private:
   std::unique_ptr<wowfs::WowFS::Stub> stub_;

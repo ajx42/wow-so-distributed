@@ -38,20 +38,14 @@ grpc::Status WowFSServiceImpl::DownloadStat(grpc::ServerContext* context, const 
 {
     //Run lstat operation
     struct stat buf;
-    int res = lstat(request->file_name().c_str(), &buf);
-    
-    //Serialize struct
-    char * buffer = (char*)malloc(sizeof(buf));
-    memcpy(buffer, &buf, sizeof(buf));
+    int ret = lstat(request->file_name().c_str(), &buf);
     
     //Send struct
     wowfs::DownloadResponse response;
-    response.set_data(buffer, sizeof(buf));
-    response.set_res(res);
-    response.set_errno_(errno);
+    response.set_data(reinterpret_cast<char*>(&buf), sizeof(buf));
+    response.set_ret(ret);
+    response.set_server_errno(errno);
     writer->Write(response);
-    
-    free(buffer);
 
     return grpc::Status::OK;
 }
@@ -60,9 +54,9 @@ grpc::Status WowFSServiceImpl::Mkdir(grpc::ServerContext* context, const wowfs::
 {
     //Run mkdir operation
     mode_t mode = request->mode();
-    int res = mkdir(request->dir_name().c_str(), mode);
-    response->set_res(res);
-    response->set_errno_(errno);
+    int ret = mkdir(request->dir_name().c_str(), mode);
+    response->set_ret(ret);
+    response->set_server_errno(errno);
     
     return grpc::Status::OK;
 }
