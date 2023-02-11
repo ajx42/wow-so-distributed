@@ -4,8 +4,9 @@ package wowfs;
 
 service WowFS {
     rpc TestCall(Cmd) returns(Ack) {}
+    rpc DownloadFile(DownloadRequest) returns (stream DownloadResponse){}
+    rpc DownloadStat(DownloadRequest) returns (stream DownloadResponse){}
 }
-
 
 message Ack {
     int32 Ok = 1;
@@ -13,4 +14,12 @@ message Ack {
 
 message Cmd {
     int32 Sup = 1;
+}
+
+message DownloadRequest{
+    string file_name = 1;
+}
+
+message DownloadResponse{
+    bytes data = 1;
 }

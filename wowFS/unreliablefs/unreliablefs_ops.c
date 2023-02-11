@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
-#include <vector>
 
 #include <sys/ioctl.h>
 #include <sys/file.h>
@@ -21,6 +20,7 @@
 
 #include "unreliablefs_ops.h"
 
+#define WOWFS_LOG_FILE "/tmp/wowfs_local/log"
 #include <fstream>
 #include <string>
 namespace {
@@ -31,7 +31,6 @@ namespace {
     WowManager::Instance().client.Ping(111);
   }
 }
-
 
 const char *fuse_op_name[] = {
     "getattr",
@@ -85,8 +84,25 @@ const char *fuse_op_name[] = {
 
 extern int error_inject(const char* path, fuse_op operation);
 
+
+void convert_path(char * file_path)
+{
+    const char *local_prefix = "/tmp/wowfs_local/";
+    const char *remote_prefix = "/tmp/wowfs_remote/";
+
+    if (strncmp(file_path, local_prefix, strlen(local_prefix)) == 0) {
+        memmove(file_path + strlen(remote_prefix), file_path + strlen(local_prefix), strlen(file_path) - strlen(local_prefix) + 1);
+        memmove(file_path, remote_prefix, strlen(remote_prefix));
+    }
+}
+
 int unreliable_lstat(const char *path, struct stat *buf)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "lstat %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_LSTAT);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -104,6 +120,11 @@ int unreliable_lstat(const char *path, struct stat *buf)
 
 int unreliable_getattr(const char *path, struct stat *buf)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "getattr %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_GETATTR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -111,16 +132,45 @@ int unreliable_getattr(const char *path, struct stat *buf)
         return ret;
     }
 
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+
     memset(buf, 0, sizeof(struct stat));
-    if (lstat(path, buf) == -1) {
-        return -errno;
+    
+    //Send request to server for file stat info.
+    struct stat * response = WowManager::Instance().client.DownloadStat(std::string(converted_path));
+
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "getattr recieved\n");
+
+    //Verify response 
+    if(response == nullptr)
+    {
+        fprintf(file, "\tgetattr: NULL\n");
+        return -1;
     }
+    fprintf(file, "\tgetattr inode : %lu\n", response->st_ino);
+    fclose(file);
+    
+    //Copy response to buf.
+    memcpy(buf, response, sizeof(struct stat));
+    free(response);
+
+    //if (lstat(converted_path, buf) == -1) {
+    //   return -errno;
+    //}
 
     return 0;
 }
 
 int unreliable_readlink(const char *path, char *buf, size_t bufsiz)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "readlink %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_READLINK);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -139,6 +189,11 @@ int unreliable_readlink(const char *path, char *buf, size_t bufsiz)
 
 int unreliable_mknod(const char *path, mode_t mode, dev_t dev)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "mknod %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_MKNOD);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -156,6 +211,11 @@ int unreliable_mknod(const char *path, mode_t mode, dev_t dev)
 
 int unreliable_mkdir(const char *path, mode_t mode)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "mkdir %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_MKDIR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -173,6 +233,11 @@ int unreliable_mkdir(const char *path, mode_t mode)
 
 int unreliable_unlink(const char *path)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "unlink %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_UNLINK);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -190,6 +255,11 @@ int unreliable_unlink(const char *path)
 
 int unreliable_rmdir(const char *path)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "rmdir %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_RMDIR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -207,6 +277,11 @@ int unreliable_rmdir(const char *path)
 
 int unreliable_symlink(const char *target, const char *linkpath)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "symlink %s %s\n", target, linkpath);
+    fclose(file);
+
     int ret = error_inject(target, OP_SYMLINK);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -224,6 +299,11 @@ int unreliable_symlink(const char *target, const char *linkpath)
 
 int unreliable_rename(const char *oldpath, const char *newpath)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "rename %s %s\n", oldpath, newpath);
+    fclose(file);
+
     int ret = error_inject(oldpath, OP_RENAME);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -241,6 +321,11 @@ int unreliable_rename(const char *oldpath, const char *newpath)
 
 int unreliable_link(const char *oldpath, const char *newpath)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "link %s %s\n", oldpath, newpath);
+    fclose(file);
+
     int ret = error_inject(oldpath, OP_LINK);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -258,6 +343,11 @@ int unreliable_link(const char *oldpath, const char *newpath)
 
 int unreliable_chmod(const char *path, mode_t mode)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "chmod %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_CHMOD);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -275,6 +365,11 @@ int unreliable_chmod(const char *path, mode_t mode)
 
 int unreliable_chown(const char *path, uid_t owner, gid_t group)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "chown %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_CHOWN);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -292,6 +387,11 @@ int unreliable_chown(const char *path, uid_t owner, gid_t group)
 
 int unreliable_truncate(const char *path, off_t length)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "truncate %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_TRUNCATE);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -309,6 +409,10 @@ int unreliable_truncate(const char *path, off_t length)
 
 int unreliable_open(const char *path, struct fuse_file_info *fi)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "open %s\n", path);
+    fclose(file);
     logline(std::string("wowFS -> open called: ") + std::string(path));
  
     int ret = error_inject(path, OP_OPEN);
@@ -330,6 +434,11 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
 int unreliable_read(const char *path, char *buf, size_t size, off_t offset,
                     struct fuse_file_info *fi)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "read %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_READ);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -364,6 +473,11 @@ int unreliable_read(const char *path, char *buf, size_t size, off_t offset,
 int unreliable_write(const char *path, const char *buf, size_t size,
                      off_t offset, struct fuse_file_info *fi)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "write %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_WRITE);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -397,6 +511,11 @@ int unreliable_write(const char *path, const char *buf, size_t size,
 
 int unreliable_statfs(const char *path, struct statvfs *buf)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "statfs %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_STATFS);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -414,6 +533,11 @@ int unreliable_statfs(const char *path, struct statvfs *buf)
 
 int unreliable_flush(const char *path, struct fuse_file_info *fi)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "flush %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_FLUSH);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -431,6 +555,11 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
 
 int unreliable_release(const char *path, struct fuse_file_info *fi)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "release %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_RELEASE);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -448,6 +577,11 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
 
 int unreliable_fsync(const char *path, int datasync, struct fuse_file_info *fi)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "fsync %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_FSYNC);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -483,6 +617,11 @@ int unreliable_setxattr(const char *path, const char *name,
                         const char *value, size_t size, int flags)
 #endif
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "setxattr %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_SETXATTR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -510,6 +649,11 @@ int unreliable_getxattr(const char *path, const char *name,
                         char *value, size_t size)
 #endif
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "getxattr %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_GETXATTR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -517,10 +661,16 @@ int unreliable_getxattr(const char *path, const char *name,
         return ret;
     }
 
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+
 #ifdef __APPLE__
-    ret = getxattr(path, name, value, size, 0, XATTR_NOFOLLOW);
+    ret = getxattr(converted_path, name, value, size, 0, XATTR_NOFOLLOW);
+    //ret = getxattr(path, name, value, size, 0, XATTR_NOFOLLOW);
 #else
-    ret = getxattr(path, name, value, size);
+    ret = getxattr(converted_path, name, value, size);
+    //ret = getxattr(path, name, value, size);
 #endif /* __APPLE__ */
     if (ret == -1) {
         return -errno;
@@ -531,6 +681,11 @@ int unreliable_getxattr(const char *path, const char *name,
 
 int unreliable_listxattr(const char *path, char *list, size_t size)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "listxattr %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_LISTXATTR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -552,6 +707,11 @@ int unreliable_listxattr(const char *path, char *list, size_t size)
 
 int unreliable_removexattr(const char *path, const char *name)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "removexattr %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_REMOVEXATTR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -574,6 +734,10 @@ int unreliable_removexattr(const char *path, const char *name)
 
 int unreliable_opendir(const char *path, struct fuse_file_info *fi)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "opendir %s\n", path);
+    fclose(file);
     int ret = error_inject(path, OP_OPENDIR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -581,7 +745,11 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
         return ret;
     }
 
-    DIR *dir = opendir(path);
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+    DIR *dir = opendir(converted_path);
+    //DIR *dir = opendir(path);
 
     if (!dir) {
         return -errno;
@@ -594,6 +762,11 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
 int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                        off_t offset, struct fuse_file_info *fi)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "readdir %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_READDIR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -601,7 +774,12 @@ int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         return ret;
     }
 
-    DIR *dp = opendir(path);
+    //DIR *dp = opendir(path);
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+    DIR *dp = opendir(converted_path);
+
     if (dp == NULL) {
 	return -errno;
     }
@@ -625,6 +803,11 @@ int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 int unreliable_releasedir(const char *path, struct fuse_file_info *fi)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "releasedir %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_RELEASEDIR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -644,6 +827,11 @@ int unreliable_releasedir(const char *path, struct fuse_file_info *fi)
 
 int unreliable_fsyncdir(const char *path, int datasync, struct fuse_file_info *fi)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "fsyncdir %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_FSYNCDIR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -688,6 +876,11 @@ void unreliable_destroy(void *private_data)
 
 int unreliable_access(const char *path, int mode)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "access %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_ACCESS);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -695,7 +888,10 @@ int unreliable_access(const char *path, int mode)
         return ret;
     }
 
-    ret = access(path, mode); 
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+    ret = access(converted_path, mode); 
     if (ret == -1) {
         return -errno;
     }
@@ -706,6 +902,11 @@ int unreliable_access(const char *path, int mode)
 int unreliable_create(const char *path, mode_t mode,
                       struct fuse_file_info *fi)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "create %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_CREAT);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -725,6 +926,11 @@ int unreliable_create(const char *path, mode_t mode,
 int unreliable_ftruncate(const char *path, off_t length,
                          struct fuse_file_info *fi)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "ftruncate %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_FTRUNCATE);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -743,6 +949,11 @@ int unreliable_ftruncate(const char *path, off_t length,
 int unreliable_fgetattr(const char *path, struct stat *buf,
                         struct fuse_file_info *fi)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "fgetattr %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_FGETATTR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -761,6 +972,11 @@ int unreliable_fgetattr(const char *path, struct stat *buf,
 int unreliable_lock(const char *path, struct fuse_file_info *fi, int cmd,
                     struct flock *fl)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "lock %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_LOCK);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -781,6 +997,11 @@ int unreliable_ioctl(const char *path, int cmd, void *arg,
                      struct fuse_file_info *fi,
                      unsigned int flags, void *data)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "ioctl %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_IOCTL);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -800,6 +1021,11 @@ int unreliable_ioctl(const char *path, int cmd, void *arg,
 #ifdef HAVE_FLOCK
 int unreliable_flock(const char *path, struct fuse_file_info *fi, int op)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "flock %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_FLOCK);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -821,6 +1047,11 @@ int unreliable_fallocate(const char *path, int mode,
                          off_t offset, off_t len,
                          struct fuse_file_info *fi)
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "fallocate %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_FALLOCATE);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -861,6 +1092,11 @@ int unreliable_fallocate(const char *path, int mode,
 #ifdef HAVE_UTIMENSAT
 int unreliable_utimens(const char *path, const struct timespec ts[2])
 {
+    FILE * file;
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "utimens %s\n", path);
+    fclose(file);
+
     int ret = error_inject(path, OP_UTIMENS);
     if (ret == -ERRNO_NOOP) {
         return 0;

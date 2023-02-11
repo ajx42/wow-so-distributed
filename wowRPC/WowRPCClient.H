@@ -14,6 +14,8 @@ public:
 
   int32_t Ping( int32_t cmd );
 
+  struct stat * DownloadStat(const std::string& file_name);
+
 private:
   std::unique_ptr<wowfs::WowFS::Stub> stub_;
 };

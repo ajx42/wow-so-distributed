@@ -1,3 +1,6 @@
 [submodule "grpc"]
 	path = grpc
 	url = git@github.com:grpc/grpc.git
+[submodule "workloads/filebench"]
+	path = workloads/filebench
+	url = git@github.com:filebench/filebench.git
