@@ -111,3 +111,14 @@ grpc::Status WowFSServiceImpl::Mkdir(
     
     return grpc::Status::OK;
 }
+
+grpc::Status WowFSServiceImpl::Mkdir(grpc::ServerContext* context, const wowfs::MkdirRequest* request, wowfs::MkdirResponse* response)
+{
+    //Run mkdir operation
+    mode_t mode = request->mode();
+    int res = mkdir(request->dir_name().c_str(), mode);
+    response->set_res(res);
+    response->set_errno_(errno);
+    
+    return grpc::Status::OK;
+}
