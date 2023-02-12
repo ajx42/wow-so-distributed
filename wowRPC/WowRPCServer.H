@@ -3,9 +3,9 @@
 #include <iostream>
 #include <memory>
 #include <sys/stat.h>
-//#ifdef HAVE_XATTR
+#ifdef HAVE_XATTR
 #include <sys/xattr.h>
-//#endif
+#endif
 #include <errno.h>
 
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
@@ -24,10 +24,10 @@ class WowFSServiceImpl final : public wowfs::WowFS::Service
   grpc::Status DownloadStat(grpc::ServerContext*, const wowfs::DownloadRequest*, 
           grpc::ServerWriter<wowfs::DownloadResponse>*);
   
-//#ifdef HAVE_XATTR
+#ifdef HAVE_XATTR
   grpc::Status GetXAttr(grpc::ServerContext*, const wowfs::GetXAttrRequest*,
           grpc::ServerWriter<wowfs::DownloadResponse>*);
-//#endif
+#endif
 
   grpc::Status Access(grpc::ServerContext*, const wowfs::AccessRequest*, wowfs::AccessResponse*);
 
@@ -61,7 +61,7 @@ grpc::Status WowFSServiceImpl::DownloadStat(
     return grpc::Status::OK;
 }
 
-//#ifdef HAVE_XATTR
+#ifdef HAVE_XATTR
 grpc::Status WowFSServiceImpl::GetXAttr(grpc::ServerContext* context, const wowfs::GetXAttrRequest* request, 
           grpc::ServerWriter<wowfs::DownloadResponse>* writer)
 {
@@ -69,7 +69,8 @@ grpc::Status WowFSServiceImpl::GetXAttr(grpc::ServerContext* context, const wowf
     char * buffer = (char*)malloc(request->size());
 
 #ifdef __APPLE__
-    res = getxattr(request->file_path().c_str(), request->name().c_str(), buffer, request->size(), 0, XATTR_NOFOLLOW);
+    res = getxattr(
+        request->file_path().c_str(), request->name().c_str(), buffer, request->size(), 0, XATTR_NOFOLLOW);
 #else
     res = getxattr(request->file_path().c_str(), request->name().c_str(), buffer, request->size());
 #endif /* __APPLE__ */
@@ -84,7 +85,7 @@ grpc::Status WowFSServiceImpl::GetXAttr(grpc::ServerContext* context, const wowf
 
     return grpc::Status::OK; 
 }
-//#endif
+#endif
 
 grpc::Status WowFSServiceImpl::Access(grpc::ServerContext* context,
          const wowfs::AccessRequest* request, wowfs::AccessResponse* response)

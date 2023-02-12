@@ -49,7 +49,6 @@ RPCResponse WowRPCClient::DownloadStat(const std::string& file_name, struct stat
   return RPCResponse(response.ret(), response.server_errno());
 }
 
-//#ifdef HAVE_XATTR
 RPCResponse WowRPCClient::GetXAttr(const std::string& file_path, 
   const std::string& name, char * value, const size_t size)
  {
@@ -82,7 +81,6 @@ RPCResponse WowRPCClient::GetXAttr(const std::string& file_path,
 
   return RPCResponse(response.ret(), response.server_errno());
 }
-//#endif
 
 RPCResponse WowRPCClient::Access(const std::string& file_path, mode_t mode)
 {

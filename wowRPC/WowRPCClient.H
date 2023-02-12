@@ -22,10 +22,8 @@ public:
 
   int32_t Ping( int32_t cmd );
 
-//#ifdef HAVE_XATTR
   RPCResponse GetXAttr(const std::string& file_path, 
     const std::string& name, char * value, const size_t size);
-//#endif
   RPCResponse Access(const std::string& file_path, mode_t mode);
   RPCResponse DownloadStat(const std::string& file_name, struct stat* buf);
   RPCResponse Mkdir(const std::string& dir_name, mode_t mode);

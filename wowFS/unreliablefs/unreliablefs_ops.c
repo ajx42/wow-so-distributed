@@ -445,13 +445,6 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
         return -errno;
     }
     fi->fh = ret;
-    if(FHManager::Instance().insertFHMapping(fi->fh, std::string(path))< 0)
-    {
-        file = fopen(WOWFS_LOG_FILE, "a");
-        fprintf(file, "open: fh insert failed");
-        fclose(file);
-    }
-
     return 0;
 }
 
@@ -592,12 +585,6 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
     }
 
     ret = close(fi->fh);
-    if(FHManager::Instance().removeFHMapping(fi->fh) < 0)
-    {
-        file = fopen(WOWFS_LOG_FILE, "a");
-        fprintf(file, "release: FH Remove Failed");
-        fclose(file);
-    }
 
     if (ret == -1) {
         return -errno;
@@ -697,10 +684,10 @@ int unreliable_getxattr(const char *path, const char *name,
     convert_path(converted_path);
 
     //Send request to server for file stat info.
-    RPCResponse response = WowManager::Instance().client.GetXAttr(std::string(converted_path), std::string(name), value, size);
+    RPCResponse response = WowManager::Instance().client.GetXAttr(
+        std::string(converted_path), std::string(name), value, size);
 
     file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "getxattr recieved\n");
     fprintf(file, "\tgetxattr: response %d\n", response.ret_);
 
     //Verify response 
@@ -791,12 +778,6 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
         return -errno;
     }
     fi->fh = (int64_t) dir;
-    if(FHManager::Instance().insertFHMapping(fi->fh, std::string(path))< 0)
-    {
-        file = fopen(WOWFS_LOG_FILE, "a");
-        fprintf(file, "opendir: fh insert failed");
-        fclose(file);
-    }
 
     return 0;    
 }
@@ -860,13 +841,6 @@ int unreliable_releasedir(const char *path, struct fuse_file_info *fi)
     DIR *dir = (DIR *) fi->fh;
 
     ret = closedir(dir);
-
-    if(FHManager::Instance().removeFHMapping(fi->fh) < 0)
-    {
-        file = fopen(WOWFS_LOG_FILE, "a");
-        fprintf(file, "releasedir: FH Remove Failed");
-        fclose(file);
-    }
 
     if (ret == -1) {
         return -errno;
@@ -971,12 +945,6 @@ int unreliable_create(const char *path, mode_t mode,
         return -errno;
     }
     fi->fh = ret;
-    if(FHManager::Instance().insertFHMapping(fi->fh, std::string(path))< 0)
-    {
-        file = fopen(WOWFS_LOG_FILE, "a");
-        fprintf(file, "create: fh insert failed");
-        fclose(file);
-    }
 
     return 0;    
 }
