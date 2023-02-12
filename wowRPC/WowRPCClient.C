@@ -166,3 +166,46 @@ RPCResponse WowRPCClient::Rmdir(const std::string& dir_name) {
 
   return RPCResponse(response.ret(), response.server_errno());
 }
+
+RPCResponse WowRPCClient::Open(const std::string& file_name, int flags) {
+  wowfs::OpenRequest request;
+  wowfs::OpenResponse response;
+  grpc::ClientContext context;
+
+  // Prepare request
+  request.set_file_name(file_name);
+  request.set_flags(flags);
+
+  // Dispatch
+  auto status = stub_->Open(&context, request, &response);
+
+  // Check response
+  if (!status.ok()) {
+    std::cerr << "Open rpc failed\n";
+    return RPCResponse(-1, -1);
+  }
+
+  return RPCResponse(response.ret(), response.server_errno());
+}
+
+RPCResponse WowRPCClient::Create(const std::string& file_name, mode_t mode, int flags) {
+  wowfs::CreateRequest request;
+  wowfs::CreateResponse response;
+  grpc::ClientContext context;
+
+  // Prepare request
+  request.set_file_name(file_name);
+  request.set_mode(mode);
+  request.set_flags(flags);
+
+  // Dispatch
+  auto status = stub_->Create(&context, request, &response);
+
+  // Check response
+  if (!status.ok()) {
+    std::cerr << "Create rpc failed\n";
+    return RPCResponse(-1, -1);
+  }
+
+  return RPCResponse(response.ret(), response.server_errno());
+}

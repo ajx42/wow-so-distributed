@@ -7,6 +7,7 @@
 #include <sys/xattr.h>
 #endif
 #include <errno.h>
+#include <sys/file.h>
 
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
@@ -35,7 +36,10 @@ class WowFSServiceImpl final : public wowfs::WowFS::Service
                     wowfs::MkdirResponse*);
   grpc::Status Rmdir(grpc::ServerContext*, const wowfs::RmdirRequest*, 
                     wowfs::RmdirResponse*);
-
+  grpc::Status Open(grpc::ServerContext*, const wowfs::OpenRequest*, 
+                    wowfs::OpenResponse*);
+  grpc::Status Create(grpc::ServerContext*, const wowfs::CreateRequest*, 
+                    wowfs::CreateResponse*);
 };
 
 grpc::Status WowFSServiceImpl::TestCall( 
