@@ -139,27 +139,22 @@ int unreliable_getattr(const char *path, struct stat *buf)
     memset(buf, 0, sizeof(struct stat));
     
     //Send request to server for file stat info.
-    struct stat * response = WowManager::Instance().client.DownloadStat(std::string(converted_path));
+    RPCResponse response = WowManager::Instance().client.DownloadStat(std::string(converted_path), buf);
 
     file = fopen(WOWFS_LOG_FILE, "a");
     fprintf(file, "getattr recieved\n");
+    fprintf(file, "\tgetattr: response %d\n", response.ret_);
 
     //Verify response 
-    if(response == nullptr)
+    if(response.ret_ == -1)
     {
-        fprintf(file, "\tgetattr: NULL\n");
-        return -1;
+        fprintf(file, "\tgetattr: errno %d\n", response.server_errno_);
+        fclose(file);
+        return -response.server_errno_;
     }
-    fprintf(file, "\tgetattr inode : %lu\n", response->st_ino);
-    fclose(file);
-    
-    //Copy response to buf.
-    memcpy(buf, response, sizeof(struct stat));
-    free(response);
 
-    //if (lstat(converted_path, buf) == -1) {
-    //   return -errno;
-    //}
+    fprintf(file, "\tgetattr inode : %lu\n", buf->st_ino);
+    fclose(file);
 
     return 0;
 }
@@ -223,10 +218,30 @@ int unreliable_mkdir(const char *path, mode_t mode)
         return ret;
     }
 
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+
+    // Send request to server to create directory.
+    RPCResponse response = WowManager::Instance().client.Mkdir(std::string(converted_path), mode);
+
+    file = fopen(WOWFS_LOG_FILE, "a");
+    if (response.ret_ == -1) {
+        fprintf(file, "\tserver mkdir failed: errno %d\n", response.server_errno_);
+        fclose(file);
+        return -1;
+    }
+    fprintf(file, "\tserver mkdir success\n");
+
+    // Create local directory.
     ret = mkdir(path, mode);
     if (ret == -1) {
-        return -errno;
+        fprintf(file, "\tlocal mkdir failed, errno %d\n", errno);
+        fclose(file);
+        return -1;
     }
+    fprintf(file, "\tlocal mkdir success\n");
+    fclose(file);
 
     return 0;
 }
@@ -893,6 +908,7 @@ int unreliable_access(const char *path, int mode)
     convert_path(converted_path);
     ret = access(converted_path, mode); 
     if (ret == -1) {
+        fprintf(file, "access %s failed\n", path);
         return -errno;
     }
     

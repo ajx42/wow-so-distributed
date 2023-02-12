@@ -5,6 +5,14 @@
 
 #include <grpcpp/channel.h>
 #include "fs.grpc.pb.h"
+#include <sys/stat.h>
+
+struct RPCResponse {
+  int32_t ret_;
+  int32_t server_errno_;
+  RPCResponse(int32_t ret, int32_t server_errno) 
+    : ret_(ret), server_errno_(server_errno) {}
+};
 
 class WowRPCClient
 {
@@ -14,7 +22,8 @@ public:
 
   int32_t Ping( int32_t cmd );
 
-  struct stat * DownloadStat(const std::string& file_name);
+  RPCResponse DownloadStat(const std::string& file_name, struct stat* buf);
+  RPCResponse Mkdir(const std::string& dir_name, mode_t mode);
 
 private:
   std::unique_ptr<wowfs::WowFS::Stub> stub_;
