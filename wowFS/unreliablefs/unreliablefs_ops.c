@@ -19,16 +19,76 @@
 #define ERRNO_NOOP -999
 
 #include "unreliablefs_ops.h"
-
-#define WOWFS_LOG_FILE "/tmp/wowfs_local/log"
 #include <fstream>
 #include <string>
-namespace {
-  void logline(std::string line) {  
+#include <vector>
+
+#define WOWFS_LOG_FILE "/tmp/wowfs_local/log"
+namespace
+{
+  void logline(std::string line)
+  {
     std::ofstream off("/tmp/logs.unreliable.txt", std::ios_base::app);
     off << std::string(line) << std::endl;
     // ping server to demonstrate
     WowManager::Instance().client.Ping(111);
+  }
+
+  std::vector<std::pair<int32_t, std::string> > fh_mapping;
+  std::vector<std::pair<int32_t, std::string> >::iterator lookupMapping(int32_t fh)
+  {
+    return std::find_if(fh_mapping.begin(), fh_mapping.end(),
+                           [fh](const std::pair<int32_t, std::string> &p)
+                           {
+                             return p.first == fh;
+                           });
+  }
+  // Insert mapping, return error if already exists.
+  int32_t insertFHMapping(int32_t fh, std::string path)
+  {
+    auto it = lookupMapping(fh);
+
+    if (it == fh_mapping.end())
+    {
+      fh_mapping.emplace_back(fh, path);
+      return 0;
+    }
+    else
+    {
+      return -1;
+    }
+  }
+
+  // Remove mapping, return error if fh not present.
+  int32_t removeFHMapping(int32_t fh)
+  {
+    auto it = lookupMapping(fh);
+
+    if (it != fh_mapping.end())
+    {
+      fh_mapping.erase(it);
+      return 0;
+    }
+    else
+    {
+      return -1;
+    }
+  }
+
+  // Update existing mapping, return error if fh not present.
+  int32_t updateFHMapping(int32_t fh, std::string path)
+  {
+    auto it = lookupMapping(fh);
+
+    if (it != fh_mapping.end())
+    {
+      it->second = path;
+      return 0;
+    }
+    else
+    {
+      return -1;
+    }
   }
 }
 
@@ -442,6 +502,12 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
         return -errno;
     }
     fi->fh = ret;
+    if(insertFHMapping(fi->fh, std::string(path))< 0)
+    {
+        file = fopen(WOWFS_LOG_FILE, "a");
+        fprintf(file, "open: fh insert failed");
+        fclose(file);
+    }
 
     return 0;
 }
@@ -583,6 +649,13 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
     }
 
     ret = close(fi->fh);
+    if(removeFHMapping(fi->fh) < 0)
+    {
+        file = fopen(WOWFS_LOG_FILE, "a");
+        fprintf(file, "release: FH Remove Failed");
+        fclose(file);
+    }
+
     if (ret == -1) {
         return -errno;
     }
@@ -775,6 +848,12 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
         return -errno;
     }
     fi->fh = (int64_t) dir;
+    if(insertFHMapping(fi->fh, std::string(path))< 0)
+    {
+        file = fopen(WOWFS_LOG_FILE, "a");
+        fprintf(file, "opendir: fh insert failed");
+        fclose(file);
+    }
 
     return 0;    
 }
@@ -838,6 +917,14 @@ int unreliable_releasedir(const char *path, struct fuse_file_info *fi)
     DIR *dir = (DIR *) fi->fh;
 
     ret = closedir(dir);
+
+    if(removeFHMapping(fi->fh) < 0)
+    {
+        file = fopen(WOWFS_LOG_FILE, "a");
+        fprintf(file, "releasedir: FH Remove Failed");
+        fclose(file);
+    }
+
     if (ret == -1) {
         return -errno;
     }
@@ -941,6 +1028,12 @@ int unreliable_create(const char *path, mode_t mode,
         return -errno;
     }
     fi->fh = ret;
+    if(insertFHMapping(fi->fh, std::string(path))< 0)
+    {
+        file = fopen(WOWFS_LOG_FILE, "a");
+        fprintf(file, "create: fh insert failed");
+        fclose(file);
+    }
 
     return 0;    
 }
