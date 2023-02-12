@@ -30,4 +30,4 @@ file
 EOF
 
 #Start up file server
-# ./build/wowRPC/server
+./build/wowRPC/server
