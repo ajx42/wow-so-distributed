@@ -50,7 +50,10 @@ RPCResponse WowRPCClient::DownloadStat(const std::string& file_name, struct stat
 }
 
 //#ifdef HAVE_XATTR
-RPCResponse WowRPCClient::GetXAttr(const std::string& file_path, const std::string& name, char * value, const size_t size){
+RPCResponse WowRPCClient::GetXAttr(const std::string& file_path, 
+  const std::string& name, char * value, const size_t size)
+ {
+
   wowfs::GetXAttrRequest request;
   wowfs::DownloadResponse response;
   grpc::ClientContext context;
@@ -103,7 +106,8 @@ RPCResponse WowRPCClient::Access(const std::string& file_path, mode_t mode)
   return RPCResponse(response.ret(), response.server_errno());
 }
 
-RPCResponse WowRPCClient::Mkdir(const std::string& dir_name, mode_t mode) {
+RPCResponse WowRPCClient::Mkdir(const std::string& dir_name, mode_t mode)
+{
   wowfs::MkdirRequest request; 
   wowfs::MkdirResponse response;
   grpc::ClientContext context;

@@ -7,11 +7,12 @@
 #include "fs.grpc.pb.h"
 #include <sys/stat.h>
 
-typedef struct RPCResponse {
+struct RPCResponse {
   int32_t ret_;
   int32_t server_errno_;
-  RPCResponse(int32_t ret, int32_t server_errno) : ret_(ret), server_errno_(server_errno) {}
-} RPCResponse;
+  RPCResponse(int32_t ret, int32_t server_errno) 
+    : ret_(ret), server_errno_(server_errno) {}
+};
 
 class WowRPCClient
 {
@@ -22,7 +23,8 @@ public:
   int32_t Ping( int32_t cmd );
 
 //#ifdef HAVE_XATTR
-  RPCResponse GetXAttr(const std::string& file_path, const std::string& name, char * value, const size_t size);
+  RPCResponse GetXAttr(const std::string& file_path, 
+    const std::string& name, char * value, const size_t size);
 //#endif
   RPCResponse Access(const std::string& file_path, mode_t mode);
   RPCResponse DownloadStat(const std::string& file_name, struct stat* buf);

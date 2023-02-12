@@ -43,8 +43,9 @@ grpc::Status WowFSServiceImpl::TestCall(
   return grpc::Status::OK;
 }
 
-grpc::Status WowFSServiceImpl::DownloadStat(grpc::ServerContext* context, const wowfs::DownloadRequest* request, 
-          grpc::ServerWriter<wowfs::DownloadResponse>* writer)
+grpc::Status WowFSServiceImpl::DownloadStat(
+    grpc::ServerContext* context, const wowfs::DownloadRequest* request, 
+    grpc::ServerWriter<wowfs::DownloadResponse>* writer)
 {
     //Run lstat operation
     struct stat buf;
@@ -85,7 +86,8 @@ grpc::Status WowFSServiceImpl::GetXAttr(grpc::ServerContext* context, const wowf
 }
 //#endif
 
-grpc::Status WowFSServiceImpl::Access(grpc::ServerContext* context, const wowfs::AccessRequest* request, wowfs::AccessResponse* response)
+grpc::Status WowFSServiceImpl::Access(grpc::ServerContext* context,
+         const wowfs::AccessRequest* request, wowfs::AccessResponse* response)
 {
     //Run access operation
     mode_t mode = request->mode();
@@ -96,7 +98,9 @@ grpc::Status WowFSServiceImpl::Access(grpc::ServerContext* context, const wowfs:
     return grpc::Status::OK;
 }
 
-grpc::Status WowFSServiceImpl::Mkdir(grpc::ServerContext* context, const wowfs::MkdirRequest* request, wowfs::MkdirResponse* response)
+grpc::Status WowFSServiceImpl::Mkdir(
+    grpc::ServerContext* context, const wowfs::MkdirRequest* request,
+    wowfs::MkdirResponse* response)
 {
     //Run mkdir operation
     mode_t mode = request->mode();
