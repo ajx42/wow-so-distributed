@@ -27,6 +27,7 @@ public:
   RPCResponse Access(const std::string& file_path, mode_t mode);
   RPCResponse DownloadStat(const std::string& file_name, struct stat* buf);
   RPCResponse Mkdir(const std::string& dir_name, mode_t mode);
+  RPCResponse Rmdir(const std::string& dir_name);
 
 private:
   std::unique_ptr<wowfs::WowFS::Stub> stub_;

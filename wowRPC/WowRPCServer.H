@@ -31,8 +31,11 @@ class WowFSServiceImpl final : public wowfs::WowFS::Service
 
   grpc::Status Access(grpc::ServerContext*, const wowfs::AccessRequest*, wowfs::AccessResponse*);
 
-  grpc::Status Mkdir(grpc::ServerContext*, const wowfs::MkdirRequest*, wowfs::MkdirResponse*);
-  
+  grpc::Status Mkdir(grpc::ServerContext*, const wowfs::MkdirRequest*, 
+                    wowfs::MkdirResponse*);
+  grpc::Status Rmdir(grpc::ServerContext*, const wowfs::RmdirRequest*, 
+                    wowfs::RmdirResponse*);
+
 };
 
 grpc::Status WowFSServiceImpl::TestCall( 
