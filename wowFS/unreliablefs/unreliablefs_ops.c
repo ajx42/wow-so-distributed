@@ -1012,19 +1012,27 @@ int unreliable_fgetattr(const char *path, struct stat *buf,
     fprintf(file, "fgetattr %s\n", path);
     fclose(file);
 
-    int ret = error_inject(path, OP_FGETATTR);
-    if (ret == -ERRNO_NOOP) {
-        return 0;
-    } else if (ret) {
-        return ret;
-    }
+    //Assuming we are saving local paths in the FHManager.
+    return unreliable_getattr(FHManager::Instance().lookupPath(fi->fh).c_str(), buf);
 
-    ret = fstat((int) fi->fh, buf);
-    if (ret == -1) {
-        return -errno;
-    }
+    //===========================
+    //TODO: Once all functions are done, we may want to revisit this and make
+    //sure it handles edge cases such as when fstat is called on a closed file handle
+
+    //int ret = error_inject(path, OP_FGETATTR);
+    //if (ret == -ERRNO_NOOP) {
+    //    return 0;
+    //} else if (ret) {
+    //    return ret;
+    //}
+
+    //ret = fstat((int) fi->fh, buf);
+    //if (ret == -1) {
+    //    return -errno;
+    //}
     
-    return 0;    
+    //return 0;    
+    //===========================
 }
 
 int unreliable_lock(const char *path, struct fuse_file_info *fi, int cmd,
