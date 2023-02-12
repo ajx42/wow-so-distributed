@@ -139,19 +139,18 @@ int unreliable_getattr(const char *path, struct stat *buf)
     memset(buf, 0, sizeof(struct stat));
     
     //Send request to server for file stat info.
-    int errno_;
-    int response = WowManager::Instance().client.DownloadStat(std::string(converted_path), buf, &errno_);
+    RPCResponse response = WowManager::Instance().client.DownloadStat(std::string(converted_path), buf);
 
     file = fopen(WOWFS_LOG_FILE, "a");
     fprintf(file, "getattr recieved\n");
-    fprintf(file, "\tgetattr: response %d\n", response);
+    fprintf(file, "\tgetattr: response %d\n", response.ret_);
 
     //Verify response 
-    if(response == -1)
+    if(response.ret_ == -1)
     {
-        fprintf(file, "\tgetattr: errno %d\n", errno_);
+        fprintf(file, "\tgetattr: errno %d\n", response.server_errno_);
         fclose(file);
-        return -errno_;
+        return -response.server_errno_;
     }
 
     fprintf(file, "\tgetattr inode : %lu\n", buf->st_ino);
@@ -224,12 +223,11 @@ int unreliable_mkdir(const char *path, mode_t mode)
     convert_path(converted_path);
 
     // Send request to server to create directory.
-    int errno_;
-    int response = WowManager::Instance().client.Mkdir(std::string(converted_path), mode, &errno_);
+    RPCResponse response = WowManager::Instance().client.Mkdir(std::string(converted_path), mode);
 
     file = fopen(WOWFS_LOG_FILE, "a");
-    if (response == -1) {
-        fprintf(file, "\tserver mkdir failed: errno %d\n", errno_);
+    if (response.ret_ == -1) {
+        fprintf(file, "\tserver mkdir failed: errno %d\n", response.server_errno_);
         fclose(file);
         return -1;
     }
@@ -683,19 +681,18 @@ int unreliable_getxattr(const char *path, const char *name,
     convert_path(converted_path);
 
     //Send request to server for file stat info.
-    int errno_;
-    int response = WowManager::Instance().client.GetXAttr(std::string(converted_path), std::string(name), value, size, &errno_);
+    RPCResponse response = WowManager::Instance().client.GetXAttr(std::string(converted_path), std::string(name), value, size);
 
     file = fopen(WOWFS_LOG_FILE, "a");
     fprintf(file, "getxattr recieved\n");
-    fprintf(file, "\tgetxattr: response %d\n", response);
+    fprintf(file, "\tgetxattr: response %d\n", response.ret_);
 
     //Verify response 
-    if(response == -1)
+    if(response.ret_ == -1)
     {
-        fprintf(file, "\tgetxattr: errno %d\n", errno_);
+        fprintf(file, "\tgetxattr: errno %d\n", response.server_errno_);
         fclose(file);
-        return -errno_;
+        return -response.server_errno_;
     }
     fclose(file);
     
@@ -915,11 +912,10 @@ int unreliable_access(const char *path, int mode)
     strcpy(converted_path, path);
     convert_path(converted_path);
 
-    int errno_;
-    ret = WowManager::Instance().client.Access(std::string(converted_path), mode, &errno_);
-    if (ret == -1) {
+    RPCResponse response = WowManager::Instance().client.Access(std::string(converted_path), mode);
+    if (response.ret_ == -1) {
         fprintf(file, "access %s failed\n", path);
-        return -errno;
+        return -response.server_errno_;
     }
     
     return 0;

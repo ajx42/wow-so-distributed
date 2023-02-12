@@ -12,11 +12,11 @@ service WowFS {
 }
 
 message Ack {
-    int32 Ok = 1;
+    int32 ok = 1;
 }
 
 message Cmd {
-    int32 Sup = 1;
+    int32 sup = 1;
 }
 
 message DownloadRequest{
@@ -25,8 +25,8 @@ message DownloadRequest{
 
 message DownloadResponse{
     bytes data = 1;
-    int32 res = 2;
-    int32 errno_ = 3;
+    int32 ret = 2;
+    int32 server_errno = 3;
 }
 
 message GetXAttrRequest{
@@ -41,8 +41,8 @@ message AccessRequest{
 }
 
 message AccessResponse{
-    int32 res = 1;
-    int32 errno_ = 2;
+    int32 ret = 1;
+    int32 server_errno = 2;
 }
 
 message MkdirRequest{
@@ -51,6 +51,6 @@ message MkdirRequest{
 }
 
 message MkdirResponse{
-    int32 res = 1;
-    int32 errno_ = 2;
+    int32 ret = 1;
+    int32 server_errno = 2;
 }
