@@ -49,7 +49,63 @@ RPCResponse WowRPCClient::DownloadStat(const std::string& file_name, struct stat
   return RPCResponse(response.ret(), response.server_errno());
 }
 
-RPCResponse WowRPCClient::Mkdir(const std::string& dir_name, mode_t mode) {
+RPCResponse WowRPCClient::GetXAttr(const std::string& file_path, 
+  const std::string& name, char * value, const size_t size)
+ {
+
+  wowfs::GetXAttrRequest request;
+  wowfs::DownloadResponse response;
+  grpc::ClientContext context;
+
+  //Prepare request
+  request.set_file_path(file_path);
+  request.set_name(name);
+  request.set_size(size);
+
+  //Dispatch
+  auto writer = stub_->GetXAttr(&context, request);
+
+  //Check Response
+  writer->Read(&response);
+
+  grpc::Status status = writer->Finish();
+
+  if(!status.ok())
+  {
+      std::cerr << "DownloadStat rpc failed\n";
+      return RPCResponse(-1, -1);
+  }
+
+  //Copy and return
+  memcpy(value, response.data().data(), response.data().size());
+
+  return RPCResponse(response.ret(), response.server_errno());
+}
+
+RPCResponse WowRPCClient::Access(const std::string& file_path, mode_t mode)
+{
+  wowfs::AccessRequest request;
+  wowfs::AccessResponse response;
+  grpc::ClientContext context;
+
+  // Prepare request
+  request.set_file_path(file_path);
+  request.set_mode(mode);
+
+  // Dispatch
+  auto status = stub_->Access(&context, request, &response);
+
+  // Check response
+  if (!status.ok()) {
+    std::cerr << "Access rpc failed\n";
+    return RPCResponse(-1, -1);
+  }
+
+  return RPCResponse(response.ret(), response.server_errno());
+}
+
+RPCResponse WowRPCClient::Mkdir(const std::string& dir_name, mode_t mode)
+{
   wowfs::MkdirRequest request; 
   wowfs::MkdirResponse response;
   grpc::ClientContext context;

@@ -19,12 +19,15 @@
 #define ERRNO_NOOP -999
 
 #include "unreliablefs_ops.h"
-
-#define WOWFS_LOG_FILE "/tmp/wowfs_local/log"
 #include <fstream>
 #include <string>
-namespace {
-  void logline(std::string line) {  
+#include <vector>
+
+#define WOWFS_LOG_FILE "/tmp/wowfs_local/log"
+namespace
+{
+  void logline(std::string line)
+  {
     std::ofstream off("/tmp/logs.unreliable.txt", std::ios_base::app);
     off << std::string(line) << std::endl;
     // ping server to demonstrate
@@ -442,7 +445,6 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
         return -errno;
     }
     fi->fh = ret;
-
     return 0;
 }
 
@@ -583,6 +585,7 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
     }
 
     ret = close(fi->fh);
+
     if (ret == -1) {
         return -errno;
     }
@@ -680,16 +683,21 @@ int unreliable_getxattr(const char *path, const char *name,
     strcpy(converted_path, path);
     convert_path(converted_path);
 
-#ifdef __APPLE__
-    ret = getxattr(converted_path, name, value, size, 0, XATTR_NOFOLLOW);
-    //ret = getxattr(path, name, value, size, 0, XATTR_NOFOLLOW);
-#else
-    ret = getxattr(converted_path, name, value, size);
-    //ret = getxattr(path, name, value, size);
-#endif /* __APPLE__ */
-    if (ret == -1) {
-        return -errno;
+    //Send request to server for file stat info.
+    RPCResponse response = WowManager::Instance().client.GetXAttr(
+        std::string(converted_path), std::string(name), value, size);
+
+    file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "\tgetxattr: response %d\n", response.ret_);
+
+    //Verify response 
+    if(response.ret_ == -1)
+    {
+        fprintf(file, "\tgetxattr: errno %d\n", response.server_errno_);
+        fclose(file);
+        return -response.server_errno_;
     }
+    fclose(file);
     
     return 0;
 }
@@ -833,6 +841,7 @@ int unreliable_releasedir(const char *path, struct fuse_file_info *fi)
     DIR *dir = (DIR *) fi->fh;
 
     ret = closedir(dir);
+
     if (ret == -1) {
         return -errno;
     }
@@ -906,10 +915,11 @@ int unreliable_access(const char *path, int mode)
     char converted_path[100];
     strcpy(converted_path, path);
     convert_path(converted_path);
-    ret = access(converted_path, mode); 
-    if (ret == -1) {
+
+    RPCResponse response = WowManager::Instance().client.Access(std::string(converted_path), mode);
+    if (response.ret_ == -1) {
         fprintf(file, "access %s failed\n", path);
-        return -errno;
+        return -response.server_errno_;
     }
     
     return 0;
@@ -970,6 +980,15 @@ int unreliable_fgetattr(const char *path, struct stat *buf,
     fprintf(file, "fgetattr %s\n", path);
     fclose(file);
 
+    //If we want to retrieve the stat from remote (Option B)
+    //Assuming we are saving local paths in the FHManager.
+    //return unreliable_getattr(path, buf);
+
+    //Option A
+    //===========================
+    //TODO: Once all functions are done, we may want to revisit this and make
+    //sure it handles edge cases such as when fstat is called on a closed file handle
+
     int ret = error_inject(path, OP_FGETATTR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -983,6 +1002,7 @@ int unreliable_fgetattr(const char *path, struct stat *buf,
     }
     
     return 0;    
+    //===========================
 }
 
 int unreliable_lock(const char *path, struct fuse_file_info *fi, int cmd,
