@@ -121,14 +121,38 @@ grpc::Status WowFSServiceImpl::Mkdir(
     return grpc::Status::OK;
 }
 
-grpc::Status WowFSServiceImpl::Mkdir(grpc::ServerContext* context, const wowfs::MkdirRequest* request, wowfs::MkdirResponse* response)
+grpc::Status WowFSServiceImpl::Rmdir(
+    grpc::ServerContext* context, const wowfs::RmdirRequest* request,
+    wowfs::RmdirResponse* response)
 {
-    //Run mkdir operation
-    mode_t mode = request->mode();
-    int ret = mkdir(request->dir_name().c_str(), mode);
+    //Run rmdir operation
+    int ret = rmdir(request->dir_name().c_str());
     response->set_ret(ret);
     response->set_server_errno(errno);
     
     return grpc::Status::OK;
 }
 
+grpc::Status WowFSServiceImpl::Open(
+    grpc::ServerContext* context, const wowfs::OpenRequest* request,
+    wowfs::OpenResponse* response)
+{
+    //Run open operation
+    int ret = open(request->file_name().c_str(), request->flags());
+    response->set_ret(ret);
+    response->set_server_errno(errno);
+    
+    return grpc::Status::OK;
+}
+
+grpc::Status WowFSServiceImpl::Create(
+    grpc::ServerContext* context, const wowfs::CreateRequest* request,
+    wowfs::CreateResponse* response)
+{
+    //Run open operation
+    int ret = open(request->file_name().c_str(), request->flags(), request->mode());
+    response->set_ret(ret);
+    response->set_server_errno(errno);
+    
+    return grpc::Status::OK;
+}

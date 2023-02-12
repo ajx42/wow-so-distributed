@@ -475,7 +475,9 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
         fclose(file);
         return -response.server_errno_;
     }
-    fi->fh = ret;
+    fprintf(file, "\tserver open success\n");
+
+    fi->fh = response.ret_;
     return 0;
 }
 
@@ -1198,10 +1200,6 @@ int unreliable_utimens(const char *path, const struct timespec ts[2])
         return -response.server_errno_;
     }
     fprintf(file, "\tserver utimens success\n");
-    // ret = utimensat(0, path, ts, AT_SYMLINK_NOFOLLOW);
-    // if (ret == -1) {
-    //     return -errno;
-    // }
 
     return 0;
 }

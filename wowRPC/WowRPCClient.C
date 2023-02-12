@@ -126,27 +126,6 @@ RPCResponse WowRPCClient::Mkdir(const std::string& dir_name, mode_t mode)
   return RPCResponse(response.ret(), response.server_errno());
 }
 
-RPCResponse WowRPCClient::Mkdir(const std::string& dir_name, mode_t mode) {
-  wowfs::MkdirRequest request; 
-  wowfs::MkdirResponse response;
-  grpc::ClientContext context;
-
-  // Prepare request
-  request.set_dir_name(dir_name);
-  request.set_mode(mode);
-
-  // Dispatch
-  auto status = stub_->Mkdir(&context, request, &response);
-
-  // Check response
-  if (!status.ok()) {
-    std::cerr << "Mkdir rpc failed\n";
-    return RPCResponse(-1, -1);
-  }
-
-  return RPCResponse(response.ret(), response.server_errno());
-}
-
 RPCResponse WowRPCClient::Rmdir(const std::string& dir_name) {
   wowfs::RmdirRequest request;
   wowfs::RmdirResponse response;
