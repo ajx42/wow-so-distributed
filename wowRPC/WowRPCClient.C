@@ -44,7 +44,7 @@ RPCResponse WowRPCClient::DownloadStat(const std::string& file_name, struct stat
   }
   
   //Copy and return.
-  memcpy(buf, response.data().data(), sizeof(struct stat));
+  memcpy(buf, response.data().data(), response.data().size());
 
   return RPCResponse(response.ret(), response.server_errno());
 }
@@ -214,12 +214,12 @@ RPCResponse WowRPCClient::Utimens(const std::string& file_name, const struct tim
   wowfs::UtimensRequest request;
   wowfs::UtimensResponse response;
   grpc::ClientContext context;
-
-  std::unique_ptr<grpc::ClientWriter<wowfs::UtimensRequest>> writer(stub_->Utimens(&context, &response));
   
+  auto writer(stub_->Utimens(&context, &response));
   // Prepare request
   request.set_file_name(file_name);
-  request.set_data(reinterpret_cast<const char*>(ts), sizeof(ts));
+  request.set_data(reinterpret_cast<const char*>(ts), sizeof(struct timespec) * 2);
+  
   writer->Write(request);
   writer->WritesDone();
 
