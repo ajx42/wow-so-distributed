@@ -232,7 +232,7 @@ int unreliable_mkdir(const char *path, mode_t mode)
     if (response.ret_ == -1) {
         fprintf(file, "\tserver mkdir failed: errno %d\n", response.server_errno_);
         fclose(file);
-        return -1;
+        return -response.server_errno_;
     }
     fprintf(file, "\tserver mkdir success\n");
 
