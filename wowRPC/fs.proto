@@ -12,6 +12,7 @@ service WowFS {
     rpc Rmdir(RmdirRequest) returns (RmdirResponse){}
     rpc Open(OpenRequest) returns (OpenResponse){}
     rpc Create(CreateRequest) returns (CreateResponse){}
+    rpc Utimens(stream UtimensRequest) returns (UtimensResponse){}
 }
 
 message Ack {
@@ -84,6 +85,16 @@ message CreateRequest{
 }
 
 message CreateResponse{
+    int32 ret = 1;
+    int32 server_errno = 2;
+}
+
+message UtimensRequest{
+    string file_name = 1;
+    bytes data = 2;
+}
+
+message UtimensResponse{
     int32 ret = 1;
     int32 server_errno = 2;
 }

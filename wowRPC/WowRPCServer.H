@@ -40,6 +40,8 @@ class WowFSServiceImpl final : public wowfs::WowFS::Service
                     wowfs::OpenResponse*);
   grpc::Status Create(grpc::ServerContext*, const wowfs::CreateRequest*, 
                     wowfs::CreateResponse*);
+  grpc::Status Utimens(grpc::ServerContext*, wowfs::UtimensResponse*,
+                    grpc::ServerReader<wowfs::UtimensRequest>*);
 };
 
 grpc::Status WowFSServiceImpl::TestCall( 

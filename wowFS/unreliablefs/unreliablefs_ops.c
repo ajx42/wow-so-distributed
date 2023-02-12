@@ -1184,11 +1184,24 @@ int unreliable_utimens(const char *path, const struct timespec ts[2])
         return ret;
     }
 
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+
     /* don't use utime/utimes since they follow symlinks */
-    ret = utimensat(0, path, ts, AT_SYMLINK_NOFOLLOW);
-    if (ret == -1) {
-        return -errno;
+    RPCResponse response = WowManager::Instance().client.Utimens(std::string(converted_path), ts);
+
+    file = fopen(WOWFS_LOG_FILE, "a");
+    if (response.ret_ == -1) {
+        fprintf(file, "\tserver utimens failed: errno %d\n", response.server_errno_);
+        fclose(file);
+        return -response.server_errno_;
     }
+    fprintf(file, "\tserver utimens success\n");
+    // ret = utimensat(0, path, ts, AT_SYMLINK_NOFOLLOW);
+    // if (ret == -1) {
+    //     return -errno;
+    // }
 
     return 0;
 }

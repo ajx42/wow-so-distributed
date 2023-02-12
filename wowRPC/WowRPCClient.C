@@ -209,3 +209,26 @@ RPCResponse WowRPCClient::Create(const std::string& file_name, mode_t mode, int 
 
   return RPCResponse(response.ret(), response.server_errno());
 }
+
+RPCResponse WowRPCClient::Utimens(const std::string& file_name, const struct timespec ts[2]) {
+  wowfs::UtimensRequest request;
+  wowfs::UtimensResponse response;
+  grpc::ClientContext context;
+
+  std::unique_ptr<grpc::ClientWriter<wowfs::UtimensRequest>> writer(stub_->Utimens(&context, &response));
+  
+  // Prepare request
+  request.set_file_name(file_name);
+  request.set_data(reinterpret_cast<const char*>(ts), sizeof(ts));
+  writer->Write(request);
+  writer->WritesDone();
+
+  auto status = writer->Finish();
+  if(!status.ok())
+  {
+      std::cerr << "Utimens rpc failed\n";
+      return RPCResponse(-1, -1);
+  }
+
+  return RPCResponse(response.ret(), response.server_errno());
+}
