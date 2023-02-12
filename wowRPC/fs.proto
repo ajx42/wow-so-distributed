@@ -10,6 +10,8 @@ service WowFS {
     rpc Access(AccessRequest) returns (AccessResponse){}
     rpc Mkdir(MkdirRequest) returns (MkdirResponse){}
     rpc Rmdir(RmdirRequest) returns (RmdirResponse){}
+    rpc Open(OpenRequest) returns (OpenResponse){}
+    rpc Create(CreateRequest) returns (CreateResponse){}
 }
 
 message Ack {
@@ -61,6 +63,27 @@ message RmdirRequest{
 }
 
 message RmdirResponse{
+    int32 ret = 1;
+    int32 server_errno = 2;
+}
+
+message OpenRequest{
+    string file_name = 1;
+    int32 flags = 2;
+}
+
+message OpenResponse{
+    int32 ret = 1;
+    int32 server_errno = 2;
+}
+
+message CreateRequest{
+    string file_name = 1;
+    int32 mode = 2;
+    int32 flags = 3;
+}
+
+message CreateResponse{
     int32 ret = 1;
     int32 server_errno = 2;
 }

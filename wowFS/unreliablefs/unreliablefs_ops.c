@@ -226,7 +226,8 @@ int unreliable_mkdir(const char *path, mode_t mode)
     convert_path(converted_path);
 
     // Send request to server to create directory.
-    RPCResponse response = WowManager::Instance().client.Mkdir(std::string(converted_path), mode);
+    RPCResponse response = WowManager::Instance().client.Mkdir(
+        std::string(converted_path), mode);
 
     file = fopen(WOWFS_LOG_FILE, "a");
     if (response.ret_ == -1) {
@@ -460,11 +461,23 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
         return ret;
     }
 
-    ret = open(path, fi->flags);
-    if (ret == -1) {
-        return -errno;
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+
+    // Send request to server to remove directory.
+    RPCResponse response = WowManager::Instance().client.Open(
+        std::string(converted_path), fi->flags);
+
+    file = fopen(WOWFS_LOG_FILE, "a");
+    if (response.ret_ == -1) {
+        fprintf(file, "\tserver open failed: errno %d\n", response.server_errno_);
+        fclose(file);
+        return -response.server_errno_;
     }
-    fi->fh = ret;
+    fprintf(file, "\tserver open success\n");
+
+    fi->fh = response.ret_;
     return 0;
 }
 
@@ -960,11 +973,24 @@ int unreliable_create(const char *path, mode_t mode,
         return ret;
     }
 
-    ret = open(path, fi->flags, mode);
-    if (ret == -1) {
-        return -errno;
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+
+    // Send request to server to create file
+    RPCResponse response = WowManager::Instance().client.Create(
+        std::string(converted_path), mode, fi->flags);
+
+    file = fopen(WOWFS_LOG_FILE, "a");
+    if (response.ret_ == -1) {
+        fprintf(file, "\tserver create failed: errno %d\n", response.server_errno_);
+        fclose(file);
+        return -response.server_errno_;
     }
-    fi->fh = ret;
+    fprintf(file, "\tserver create success\n");
+    fclose(file);
+
+    fi->fh = response.ret_;
 
     return 0;    
 }

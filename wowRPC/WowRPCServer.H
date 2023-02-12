@@ -7,6 +7,7 @@
 #include <sys/xattr.h>
 #endif
 #include <errno.h>
+#include <sys/file.h>
 
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
@@ -35,7 +36,10 @@ class WowFSServiceImpl final : public wowfs::WowFS::Service
                     wowfs::MkdirResponse*);
   grpc::Status Rmdir(grpc::ServerContext*, const wowfs::RmdirRequest*, 
                     wowfs::RmdirResponse*);
-
+  grpc::Status Open(grpc::ServerContext*, const wowfs::OpenRequest*, 
+                    wowfs::OpenResponse*);
+  grpc::Status Create(grpc::ServerContext*, const wowfs::CreateRequest*, 
+                    wowfs::CreateResponse*);
 };
 
 grpc::Status WowFSServiceImpl::TestCall( 
@@ -121,6 +125,30 @@ grpc::Status WowFSServiceImpl::Rmdir(
 {
     //Run rmdir operation
     int ret = rmdir(request->dir_name().c_str());
+    response->set_ret(ret);
+    response->set_server_errno(errno);
+    
+    return grpc::Status::OK;
+}
+
+grpc::Status WowFSServiceImpl::Open(
+    grpc::ServerContext* context, const wowfs::OpenRequest* request,
+    wowfs::OpenResponse* response)
+{
+    //Run open operation
+    int ret = open(request->file_name().c_str(), request->flags());
+    response->set_ret(ret);
+    response->set_server_errno(errno);
+    
+    return grpc::Status::OK;
+}
+
+grpc::Status WowFSServiceImpl::Create(
+    grpc::ServerContext* context, const wowfs::CreateRequest* request,
+    wowfs::CreateResponse* response)
+{
+    //Run open operation
+    int ret = open(request->file_name().c_str(), request->flags(), request->mode());
     response->set_ret(ret);
     response->set_server_errno(errno);
     
