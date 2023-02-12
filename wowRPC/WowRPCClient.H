@@ -7,11 +7,12 @@
 #include "fs.grpc.pb.h"
 #include <sys/stat.h>
 
-typedef struct RPCResponse {
+struct RPCResponse {
   int32_t ret_;
   int32_t server_errno_;
-  RPCResponse(int32_t ret, int32_t server_errno) : ret_(ret), server_errno_(server_errno) {}
-} RPCResponse;
+  RPCResponse(int32_t ret, int32_t server_errno) 
+    : ret_(ret), server_errno_(server_errno) {}
+};
 
 class WowRPCClient
 {

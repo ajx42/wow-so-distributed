@@ -33,8 +33,9 @@ grpc::Status WowFSServiceImpl::TestCall(
   return grpc::Status::OK;
 }
 
-grpc::Status WowFSServiceImpl::DownloadStat(grpc::ServerContext* context, const wowfs::DownloadRequest* request, 
-          grpc::ServerWriter<wowfs::DownloadResponse>* writer)
+grpc::Status WowFSServiceImpl::DownloadStat(
+    grpc::ServerContext* context, const wowfs::DownloadRequest* request, 
+    grpc::ServerWriter<wowfs::DownloadResponse>* writer)
 {
     //Run lstat operation
     struct stat buf;
@@ -50,7 +51,9 @@ grpc::Status WowFSServiceImpl::DownloadStat(grpc::ServerContext* context, const 
     return grpc::Status::OK;
 }
 
-grpc::Status WowFSServiceImpl::Mkdir(grpc::ServerContext* context, const wowfs::MkdirRequest* request, wowfs::MkdirResponse* response)
+grpc::Status WowFSServiceImpl::Mkdir(
+    grpc::ServerContext* context, const wowfs::MkdirRequest* request,
+    wowfs::MkdirResponse* response)
 {
     //Run mkdir operation
     mode_t mode = request->mode();
@@ -60,3 +63,4 @@ grpc::Status WowFSServiceImpl::Mkdir(grpc::ServerContext* context, const wowfs::
     
     return grpc::Status::OK;
 }
+
