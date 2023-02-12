@@ -31,8 +31,11 @@ class WowFSServiceImpl final : public wowfs::WowFS::Service
 
   grpc::Status Access(grpc::ServerContext*, const wowfs::AccessRequest*, wowfs::AccessResponse*);
 
-  grpc::Status Mkdir(grpc::ServerContext*, const wowfs::MkdirRequest*, wowfs::MkdirResponse*);
-  
+  grpc::Status Mkdir(grpc::ServerContext*, const wowfs::MkdirRequest*, 
+                    wowfs::MkdirResponse*);
+  grpc::Status Rmdir(grpc::ServerContext*, const wowfs::RmdirRequest*, 
+                    wowfs::RmdirResponse*);
+
 };
 
 grpc::Status WowFSServiceImpl::TestCall( 
@@ -106,6 +109,18 @@ grpc::Status WowFSServiceImpl::Mkdir(
     //Run mkdir operation
     mode_t mode = request->mode();
     int ret = mkdir(request->dir_name().c_str(), mode);
+    response->set_ret(ret);
+    response->set_server_errno(errno);
+    
+    return grpc::Status::OK;
+}
+
+grpc::Status WowFSServiceImpl::Rmdir(
+    grpc::ServerContext* context, const wowfs::RmdirRequest* request,
+    wowfs::RmdirResponse* response)
+{
+    //Run rmdir operation
+    int ret = rmdir(request->dir_name().c_str());
     response->set_ret(ret);
     response->set_server_errno(errno);
     

@@ -241,7 +241,7 @@ int unreliable_mkdir(const char *path, mode_t mode)
     if (ret == -1) {
         fprintf(file, "\tlocal mkdir failed, errno %d\n", errno);
         fclose(file);
-        return -1;
+        return -errno;
     }
     fprintf(file, "\tlocal mkdir success\n");
     fclose(file);
@@ -285,10 +285,30 @@ int unreliable_rmdir(const char *path)
         return ret;
     }
 
-    ret = rmdir(path); 
-    if (ret == -1) {
-        return -errno;
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+
+    // Send request to server to remove directory.
+    RPCResponse response = WowManager::Instance().client.Rmdir(std::string(converted_path));
+
+    file = fopen(WOWFS_LOG_FILE, "a");
+    if (response.ret_ == -1) {
+        fprintf(file, "\tserver rmdir failed: errno %d\n", response.server_errno_);
+        fclose(file);
+        return -response.server_errno_;
     }
+    fprintf(file, "\tserver rmdir success\n");
+
+    // Remove local directory.
+    ret = rmdir(path);
+    if (ret == -1) {
+        fprintf(file, "\tlocal rmdir failed, errno %d\n", errno);
+        fclose(file);
+        return -1;
+    }
+    fprintf(file, "\tlocal rmdir success\n");
+    fclose(file);
 
     return 0;
 }
