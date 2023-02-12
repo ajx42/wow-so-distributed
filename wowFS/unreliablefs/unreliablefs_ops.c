@@ -1012,26 +1012,28 @@ int unreliable_fgetattr(const char *path, struct stat *buf,
     fprintf(file, "fgetattr %s\n", path);
     fclose(file);
 
+    //If we want to retrieve the stat from remote (Option B)
     //Assuming we are saving local paths in the FHManager.
-    return unreliable_getattr(FHManager::Instance().lookupPath(fi->fh).c_str(), buf);
+    //return unreliable_getattr(path, buf);
 
+    //Option A
     //===========================
     //TODO: Once all functions are done, we may want to revisit this and make
     //sure it handles edge cases such as when fstat is called on a closed file handle
 
-    //int ret = error_inject(path, OP_FGETATTR);
-    //if (ret == -ERRNO_NOOP) {
-    //    return 0;
-    //} else if (ret) {
-    //    return ret;
-    //}
+    int ret = error_inject(path, OP_FGETATTR);
+    if (ret == -ERRNO_NOOP) {
+        return 0;
+    } else if (ret) {
+        return ret;
+    }
 
-    //ret = fstat((int) fi->fh, buf);
-    //if (ret == -1) {
-    //    return -errno;
-    //}
+    ret = fstat((int) fi->fh, buf);
+    if (ret == -1) {
+        return -errno;
+    }
     
-    //return 0;    
+    return 0;    
     //===========================
 }
 
