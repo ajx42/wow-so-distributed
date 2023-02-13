@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 
 class WowCacheManager
 {
@@ -16,6 +17,18 @@ private:
 
 inline bool WowCacheManager::saveToCache( std::string path, const std::string& buf )
 {
+  if ( path.empty() || path[0] != '/' ) {
+    return false; // something is very wrong, we only expect absolute paths
+  }
+  // we are assuming path is a file path, so should not end in '/'
+  std::string dirTree;
+  for ( int i = 0; i < path.size(); ++i ) {
+    if ( path[i] == '/' ) {
+      dirTree = path.substr(0, i);
+    }
+  }
+  std::filesystem::create_directories(dirTree);
+
   FILE* fp = fopen( path.c_str(), "wb" );
   if ( fp != NULL ) {
     fwrite( buf.data(), 1, buf.size(), fp );
