@@ -225,16 +225,6 @@ RPCResponse WowRPCClient::Writeback( const std::string& path, const std::string&
   }
 }
 
-namespace
-{
-  void logline(std::string line)
-  {
-    std::ofstream off("/tmp/logs.unreliable.txt", std::ios_base::app);
-    off << std::string(line) << std::endl;
-    // ping server to demonstrate
-  }
-}
-
 RPCResponse WowRPCClient::DownloadFile(
     const std::string& path, std::string& buf, size_t fileSize )
 {
@@ -244,7 +234,7 @@ RPCResponse WowRPCClient::DownloadFile(
   wowfs::StreamReadRequest request;
   wowfs::StreamReadResponse response;
   grpc::ClientContext context;
-
+  size_t bytesRead = 0;
   request.set_path( path );
   request.set_size( fileSize );
   std::unique_ptr<grpc::ClientReader<wowfs::StreamReadResponse>> reader(
@@ -254,11 +244,14 @@ RPCResponse WowRPCClient::DownloadFile(
       // we are probably done
       break;
     }
+    // server returns the # bytes read in ret if it's not negative
+    bytesRead += response.ret();
     buf += response.buf().substr(0, response.ret());
   }
   auto status = reader->Finish();
   if ( status.ok() ) {
-    return RPCResponse(response.ret(), response.server_errno());
+    // not sure if this is the right way for error handling
+    return RPCResponse( response.ret() >= 0 ? bytesRead : response.ret(), response.server_errno() );
   } else {
     return RPCResponse(-1, -1);
   }
