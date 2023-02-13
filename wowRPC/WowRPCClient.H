@@ -30,7 +30,8 @@ public:
   RPCResponse Rmdir(const std::string& dir_name);
   RPCResponse Open(const std::string& file_name, int flags);
   RPCResponse Create(const std::string& file_name, mode_t mode, int flags);
-
+  RPCResponse Writeback( const std::string& path, const std::string& buf );
+  RPCResponse DownloadFile( const std::string& path, std::string& buf, size_t size ); 
 private:
   std::unique_ptr<wowfs::WowFS::Stub> stub_;
 };

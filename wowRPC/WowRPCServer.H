@@ -40,6 +40,12 @@ class WowFSServiceImpl final : public wowfs::WowFS::Service
                     wowfs::OpenResponse*);
   grpc::Status Create(grpc::ServerContext*, const wowfs::CreateRequest*, 
                     wowfs::CreateResponse*);
+  
+  grpc::Status Writeback(grpc::ServerContext*, grpc::ServerReader<wowfs::StreamWriteRequest>*,
+    wowfs::StreamWriteResponse*);
+
+  grpc::Status ReadFile(grpc::ServerContext*, const wowfs::StreamReadRequest*,
+      grpc::ServerWriter<wowfs::StreamReadResponse>*);
 };
 
 grpc::Status WowFSServiceImpl::TestCall( 
@@ -66,6 +72,51 @@ grpc::Status WowFSServiceImpl::DownloadStat(
     writer->Write(response);
 
     return grpc::Status::OK;
+}
+
+grpc::Status WowFSServiceImpl::ReadFile(
+    grpc::ServerContext* context, const wowfs::StreamReadRequest* request,
+    grpc::ServerWriter<wowfs::StreamReadResponse>* writer )
+{
+  wowfs::StreamReadResponse response;
+  // open file for reading
+  auto fd = open( request->path().c_str(), O_RDONLY );
+  if ( fd == -1 ) {
+    // we couldn't open the file, return error
+    response.set_ret( -1 );
+    response.set_server_errno( errno );
+    writer->Write( response );
+    return grpc::Status::OK;
+  }
+
+  int bytesToRead = request->size();
+
+  std::string buf;
+  buf.resize( bytesToRead + 100 ); // 
+  auto ret = pread( fd, buf.data(), bytesToRead, 0 ); // read from beginning
+  close( fd );
+  if ( ret < 0 ) {
+    // we couldn't read
+    response.set_ret( -1 );
+    response.set_server_errno( errno );
+    writer->Write( response );
+    return grpc::Status::OK;
+  }
+
+  std::cerr << "Read bytes: " << ret << " and expected " << bytesToRead << std::endl;
+  int remainingSize = ret;
+  int chunkSize = 1 << 20;
+  int pos = 0;
+  while ( remainingSize ) {
+    int epochSize = std::min( remainingSize, chunkSize );
+    response.set_buf( buf.substr( pos, epochSize ) );
+    response.set_ret( epochSize );
+    response.set_server_errno( 0 );
+    pos += epochSize;
+    remainingSize -= epochSize;
+    writer->Write( response );
+  }
+  return grpc::Status::OK;
 }
 
 #ifdef HAVE_XATTR
@@ -154,3 +205,42 @@ grpc::Status WowFSServiceImpl::Create(
     
     return grpc::Status::OK;
 }
+
+grpc::Status WowFSServiceImpl::Writeback(
+    grpc::ServerContext* context, grpc::ServerReader<wowfs::StreamWriteRequest>* reader,
+    wowfs::StreamWriteResponse* response)
+{
+  int numBytesWritten = 0;
+  int outputFd = -1;
+  wowfs::StreamWriteRequest req;
+  while ( reader->Read( &req ) ) {
+    if ( outputFd == -1 ) {
+      outputFd = open( req.path().c_str(), O_WRONLY );
+      if ( outputFd == -1 ) {
+        // something went wrong
+        response->set_ret( -1 );
+        response->set_server_errno( errno );
+        return grpc::Status::OK;
+      }
+      std::cerr << "file opened for writing: " << req.path() << std::endl;
+    }
+    auto res = pwrite( outputFd, req.buf().data(), req.size(), req.offset() );
+    if ( res == -1 ) {
+      response->set_ret( -1 );
+      response->set_server_errno( errno );
+      return grpc::Status::OK;
+    }
+    numBytesWritten += res;
+  }
+  if ( outputFd > 0 ) {
+    // if we have an output file, make sure the data persists on the disk
+    fsync( outputFd );
+    close( outputFd );
+  }
+  std::cerr << "writes completed, # bytes written: " << numBytesWritten << std::endl;
+  response->set_ret( numBytesWritten );
+  response->set_server_errno( 0 );
+  return grpc::Status::OK;
+}
+
+

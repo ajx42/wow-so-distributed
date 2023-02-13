@@ -1,7 +1,7 @@
 #include "WowRPCClient.H"
 #include <iostream>
 #include <sys/stat.h>
-
+#include <fstream>
 int32_t WowRPCClient::Ping( int32_t cmd )
 {
   wowfs::Cmd msg; msg.set_sup( cmd );
@@ -187,5 +187,80 @@ RPCResponse WowRPCClient::Create(const std::string& file_name, mode_t mode, int 
   }
 
   return RPCResponse(response.ret(), response.server_errno());
+}
+
+RPCResponse WowRPCClient::Writeback( const std::string& path, const std::string& buf )
+{
+  std::cerr << "write back started: " << path << " data: " << buf << std::endl;
+  wowfs::StreamWriteRequest request;
+  wowfs::StreamWriteResponse response;
+  grpc::ClientContext context;
+  std::unique_ptr<grpc::ClientWriter<wowfs::StreamWriteRequest>> writer(
+      stub_->Writeback(&context, &response) );
+  int32_t remainingData = buf.size();
+  int32_t chunkSize = 1 << 20; // 1 MB chunks
+  int32_t pos = 0;
+  while ( remainingData ) {
+    request.set_path(path);
+    // @TODO: this can be optimised
+    auto epochSize = std::min( chunkSize, remainingData );
+    request.set_path( path );
+    request.set_buf( buf.substr( pos, epochSize ) );
+    request.set_size( epochSize );
+    request.set_offset( pos );
+    pos += epochSize;
+    remainingData -= epochSize;
+    if ( ! writer->Write( request ) ) {
+      std::cerr << "broken pipe! writes failing" << std::endl;
+      break;
+    }
+  }
+  writer->WritesDone();
+  auto status = writer->Finish();
+  // if things went well return number of bytes written
+  if ( status.ok() ) {
+    return RPCResponse(response.ret(), response.server_errno());
+  } else {
+    return RPCResponse(-1, -1);
+  }
+}
+
+namespace
+{
+  void logline(std::string line)
+  {
+    std::ofstream off("/tmp/logs.unreliable.txt", std::ios_base::app);
+    off << std::string(line) << std::endl;
+    // ping server to demonstrate
+  }
+}
+
+RPCResponse WowRPCClient::DownloadFile(
+    const std::string& path, std::string& buf, size_t fileSize )
+{
+  buf.clear();
+  buf.reserve(fileSize + 100); // i am not superstitious, just a lill
+  buf = "";
+  wowfs::StreamReadRequest request;
+  wowfs::StreamReadResponse response;
+  grpc::ClientContext context;
+
+  request.set_path( path );
+  request.set_size( fileSize );
+  std::unique_ptr<grpc::ClientReader<wowfs::StreamReadResponse>> reader(
+      stub_->ReadFile( &context, request ) );
+  while ( reader->Read( &response ) ) {
+    if ( response.ret() < 0 ) {
+      // we are probably done
+      break;
+    }
+    buf += response.buf().substr(0, response.ret());
+  }
+  auto status = reader->Finish();
+  if ( status.ok() ) {
+    return RPCResponse(response.ret(), response.server_errno());
+  } else {
+    return RPCResponse(-1, -1);
+  }
 }
 

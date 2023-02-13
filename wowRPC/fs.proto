@@ -12,6 +12,8 @@ service WowFS {
     rpc Rmdir(RmdirRequest) returns (RmdirResponse){}
     rpc Open(OpenRequest) returns (OpenResponse){}
     rpc Create(CreateRequest) returns (CreateResponse){}
+    rpc Writeback(stream StreamWriteRequest) returns (StreamWriteResponse){}
+    rpc ReadFile(StreamReadRequest) returns (stream StreamReadResponse){}
 }
 
 message Ack {
@@ -87,3 +89,27 @@ message CreateResponse{
     int32 ret = 1;
     int32 server_errno = 2;
 }
+
+message StreamWriteRequest {
+    string path = 1;
+    bytes buf = 2;
+    int32 size = 3;
+    int32 offset = 4; 
+}
+
+message StreamWriteResponse {
+    int32 ret = 1; // going to set this to num_bytes in no error case
+    int32 server_errno = 2;
+}
+
+message StreamReadRequest {
+    string path = 1;
+    int32 size = 2;
+}
+
+message StreamReadResponse {
+    int32 ret = 1;
+    int32 server_errno = 2;
+    bytes buf = 3;
+}
+

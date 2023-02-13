@@ -7,6 +7,7 @@
 #include <grpcpp/grpcpp.h>
 #include "fs.grpc.pb.h"
 #include "WowRPCClient.H"
+#include "WowCache.H"
 
 #define DEFAULT_CONF_NAME "unreliablefs.conf"
 
@@ -29,7 +30,7 @@ public:
   }
   
   WowRPCClient client;
-
+  WowCacheManager cmgr;
 private:
   // singleton
   WowManager() : client(grpc::CreateChannel( 
