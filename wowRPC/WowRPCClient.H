@@ -32,6 +32,8 @@ public:
   RPCResponse Create(const std::string& file_name, mode_t mode, int flags);
   RPCResponse Writeback( const std::string& path, const std::string& buf );
   RPCResponse DownloadFile( const std::string& path, std::string& buf, size_t size ); 
+  RPCResponse DownloadDir( const std::string& path, std::string& buf );
+
 private:
   std::unique_ptr<wowfs::WowFS::Stub> stub_;
 };

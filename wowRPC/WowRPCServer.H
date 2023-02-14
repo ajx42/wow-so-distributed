@@ -9,6 +9,8 @@
 #include <errno.h>
 #include <sys/file.h>
 
+#include <dirent.h>
+
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
@@ -45,6 +47,9 @@ class WowFSServiceImpl final : public wowfs::WowFS::Service
     wowfs::StreamWriteResponse*);
 
   grpc::Status ReadFile(grpc::ServerContext*, const wowfs::StreamReadRequest*,
+      grpc::ServerWriter<wowfs::StreamReadResponse>*);
+
+  grpc::Status ReadDir(grpc::ServerContext*, const wowfs::StreamReadRequest*,
       grpc::ServerWriter<wowfs::StreamReadResponse>*);
 };
 
@@ -245,4 +250,43 @@ grpc::Status WowFSServiceImpl::Writeback(
   return grpc::Status::OK;
 }
 
+grpc::Status WowFSServiceImpl::ReadDir(
+    grpc::ServerContext* context, const wowfs::StreamReadRequest* request,
+    grpc::ServerWriter<wowfs::StreamReadResponse>* writer )
+{
+  wowfs::StreamReadResponse response;
+  DIR *dir = opendir( request->path().c_str() );
+  if ( dir == NULL ) {
+    response.set_ret( -1 );
+    response.set_server_errno( errno );
+    writer->Write( response );
+    return grpc::Status::OK;
+  }
+  struct dirent* de;
+
+  std::vector<dirent> entries;
+
+  while ( ( de = readdir( dir ) ) != NULL ) {
+    entries.push_back( *de );
+  }
+
+  closedir( dir );
+
+  std::string buf(
+      reinterpret_cast<const char*>( entries.data() ),
+      entries.size() * sizeof( dirent ) );
+  int remainingSize = buf.size();
+  int chunkSize = 1<<20;
+  int pos = 0;
+  while ( remainingSize ) {
+    int epochSize = std::min( remainingSize, chunkSize );
+    response.set_buf( buf.substr( pos, epochSize ) );
+    response.set_ret( epochSize );
+    response.set_server_errno( 0 );
+    pos += epochSize;
+    remainingSize -= epochSize;
+    writer->Write( response );
+  }
+  return grpc::Status::OK;
+}
 

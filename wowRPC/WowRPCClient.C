@@ -1,7 +1,11 @@
 #include "WowRPCClient.H"
 #include <iostream>
 #include <sys/stat.h>
+#include <dirent.h>
+
 #include <fstream>
+
+
 int32_t WowRPCClient::Ping( int32_t cmd )
 {
   wowfs::Cmd msg; msg.set_sup( cmd );
@@ -254,6 +258,37 @@ RPCResponse WowRPCClient::DownloadFile(
     return RPCResponse( response.ret() >= 0 ? bytesRead : response.ret(), response.server_errno() );
   } else {
     return RPCResponse(-1, -1);
+  }
+}
+
+RPCResponse WowRPCClient::DownloadDir(
+    const std::string& path, std::string& buf )
+{
+  buf.clear();
+  buf = "";
+  // ideally we should reserve some space
+
+  wowfs::StreamReadRequest request;
+  wowfs::StreamReadResponse response;
+  grpc::ClientContext context;
+
+  size_t bytesRead = 0;
+  request.set_path( path );
+  request.set_size( -1 ); // we don't know this yet
+  std::unique_ptr<grpc::ClientReader<wowfs::StreamReadResponse>> reader(
+      stub_->ReadDir( &context, request ) );
+  while ( reader->Read( &response ) ) {
+    if ( response.ret() < 0 ) {
+      break;
+    }
+    bytesRead += response.ret();
+    buf += response.buf().substr(0, response.ret());
+  }
+  auto status = reader->Finish();
+  if ( status.ok() ) {
+    return RPCResponse( response.ret() >= 0 ? bytesRead : response.ret(), response.server_errno() );
+  } else {
+    return RPCResponse( -1, -1 );
   }
 }
 
