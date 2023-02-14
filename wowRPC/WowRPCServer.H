@@ -49,6 +49,8 @@ class WowFSServiceImpl final : public wowfs::WowFS::Service
     
   grpc::Status Unlink(grpc::ServerContext*, const wowfs::UnlinkRequest*, 
                       wowfs::UnlinkResponse*);
+  grpc::Status Rename(grpc::ServerContext*, const wowfs::RenameRequest*, 
+                      wowfs::RenameResponse*);
 };
 
 grpc::Status WowFSServiceImpl::TestCall( 
@@ -258,4 +260,12 @@ grpc::Status WowFSServiceImpl::Unlink(grpc::ServerContext* context, const wowfs:
     return grpc::Status::OK;
 }
 
+grpc::Status WowFSServiceImpl::Rename(grpc::ServerContext* context, const wowfs::RenameRequest* request, 
+                      wowfs::RenameResponse* response) 
+{
+    int ret = rename(request->old_path().c_str(), request->new_path().c_str());
+    response->set_ret(ret);
+    response->set_server_errno(errno);
 
+    return grpc::Status::OK;
+}
