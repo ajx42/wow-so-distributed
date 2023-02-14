@@ -87,11 +87,21 @@ const char *fuse_op_name[] = {
 
 extern int error_inject(const char* path, fuse_op operation);
 
+void old_convert_path(char * file_path)
+{
+    const char *local_prefix = "/tmp/wowfs_local/";
+    const char *remote_prefix = "/tmp/wowfs_remote/";
+
+    if (strncmp(file_path, local_prefix, strlen(local_prefix)) == 0) {
+        memmove(file_path + strlen(remote_prefix), file_path + strlen(local_prefix), strlen(file_path) - strlen(local_prefix) + 1);
+        memmove(file_path, remote_prefix, strlen(remote_prefix));
+    }
+}
 
 void convert_path(char * file_path)
 {
     const char *local_prefix = "/tmp/wowfs_local/";
-    const char *remote_prefix = "/tmp/wowfs_remote/";
+    const char *remote_prefix = "";
 
     if (strncmp(file_path, local_prefix, strlen(local_prefix)) == 0) {
         memmove(file_path + strlen(remote_prefix), file_path + strlen(local_prefix), strlen(file_path) - strlen(local_prefix) + 1);
@@ -145,6 +155,7 @@ int unreliable_getattr(const char *path, struct stat *buf)
     RPCResponse response = WowManager::Instance().client.DownloadStat(std::string(converted_path), buf);
 
     file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "getattr recieved %s %s\n", path, converted_path);
     fprintf(file, "getattr recieved\n");
     fprintf(file, "\tgetattr: response %d\n", response.ret_);
 
@@ -896,6 +907,7 @@ int unreliable_removexattr(const char *path, const char *name)
 
 int unreliable_opendir(const char *path, struct fuse_file_info *fi)
 {
+    // @TODO
     FILE * file;
     file = fopen(WOWFS_LOG_FILE, "a");
     fprintf(file, "opendir %s\n", path);
@@ -909,7 +921,7 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
 
     char converted_path[100];
     strcpy(converted_path, path);
-    convert_path(converted_path);
+    old_convert_path(converted_path);
     DIR *dir = opendir(converted_path);
     //DIR *dir = opendir(path);
 
@@ -924,6 +936,7 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
 int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                        off_t offset, struct fuse_file_info *fi)
 {
+    // @TODO
     FILE * file;
     file = fopen(WOWFS_LOG_FILE, "a");
     fprintf(file, "readdir %s\n", path);
@@ -939,7 +952,7 @@ int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     //DIR *dp = opendir(path);
     char converted_path[100];
     strcpy(converted_path, path);
-    convert_path(converted_path);
+    old_convert_path(converted_path);
     DIR *dp = opendir(converted_path);
 
     if (dp == NULL) {
@@ -965,6 +978,7 @@ int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 int unreliable_releasedir(const char *path, struct fuse_file_info *fi)
 {
+    // @TODO
     FILE * file;
     file = fopen(WOWFS_LOG_FILE, "a");
     fprintf(file, "releasedir %s\n", path);

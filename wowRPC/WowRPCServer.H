@@ -17,6 +17,17 @@
 
 class WowFSServiceImpl final : public wowfs::WowFS::Service
 {
+private:
+  std::string basedir_;
+public:
+  explicit WowFSServiceImpl(const std::string& basedir) {
+    // if basedir does not end with a /, add one
+    if (basedir.back() != '/') {
+      this->basedir_ = basedir + "/";
+    } else {
+      this->basedir_ = basedir;
+    }
+  }
   grpc::Status TestCall( grpc::ServerContext*, const wowfs::Cmd*, wowfs::Ack* );
   
   //Will implement for downloading file info
@@ -67,7 +78,7 @@ grpc::Status WowFSServiceImpl::DownloadStat(
 {
     //Run lstat operation
     struct stat buf;
-    int ret = lstat(request->file_name().c_str(), &buf);
+    int ret = lstat((this->basedir_ + request->file_name()).c_str(), &buf);
     
     //Send struct
     wowfs::DownloadResponse response;
@@ -85,7 +96,7 @@ grpc::Status WowFSServiceImpl::ReadFile(
 {
   wowfs::StreamReadResponse response;
   // open file for reading
-  auto fd = open( request->path().c_str(), O_RDONLY );
+  auto fd = open( (this->basedir_ + request->path()).c_str(), O_RDONLY );
   if ( fd == -1 ) {
     // we couldn't open the file, return error
     response.set_ret( -1 );
@@ -133,9 +144,9 @@ grpc::Status WowFSServiceImpl::GetXAttr(grpc::ServerContext* context, const wowf
 
 #ifdef __APPLE__
     res = getxattr(
-        request->file_path().c_str(), request->name().c_str(), buffer, request->size(), 0, XATTR_NOFOLLOW);
+        (this->basedir_ + request->file_path()).c_str(), request->name().c_str(), buffer, request->size(), 0, XATTR_NOFOLLOW);
 #else
-    res = getxattr(request->file_path().c_str(), request->name().c_str(), buffer, request->size());
+    res = getxattr((this->basedir_ + request->file_path()).c_str(), request->name().c_str(), buffer, request->size());
 #endif /* __APPLE__ */
 
     wowfs::DownloadResponse response;
@@ -155,7 +166,7 @@ grpc::Status WowFSServiceImpl::Access(grpc::ServerContext* context,
 {
     //Run access operation
     mode_t mode = request->mode();
-    int res = access(request->file_path().c_str(), mode);
+    int res = access((this->basedir_ + request->file_path()).c_str(), mode);
     response->set_ret(res);
     response->set_server_errno(errno);
     
@@ -168,7 +179,7 @@ grpc::Status WowFSServiceImpl::Mkdir(
 {
     //Run mkdir operation
     mode_t mode = request->mode();
-    int ret = mkdir(request->dir_name().c_str(), mode);
+    int ret = mkdir((this->basedir_ + request->dir_name()).c_str(), mode);
     response->set_ret(ret);
     response->set_server_errno(errno);
     
@@ -180,7 +191,7 @@ grpc::Status WowFSServiceImpl::Rmdir(
     wowfs::RmdirResponse* response)
 {
     //Run rmdir operation
-    int ret = rmdir(request->dir_name().c_str());
+    int ret = rmdir((this->basedir_ + request->dir_name()).c_str());
     response->set_ret(ret);
     response->set_server_errno(errno);
     
@@ -192,7 +203,7 @@ grpc::Status WowFSServiceImpl::Open(
     wowfs::OpenResponse* response)
 {
     //Run open operation
-    int ret = open(request->file_name().c_str(), request->flags() | O_CREAT);
+    int ret = open((this->basedir_ + request->file_name()).c_str(), request->flags() | O_CREAT);
     response->set_ret(ret);
     response->set_server_errno(errno);
     close(ret); 
@@ -204,7 +215,7 @@ grpc::Status WowFSServiceImpl::Create(
     wowfs::CreateResponse* response)
 {
     //Run open operation
-    int ret = open(request->file_name().c_str(), request->flags(), request->mode());
+    int ret = open((this->basedir_ + request->file_name()).c_str(), request->flags(), request->mode());
     response->set_ret(ret);
     response->set_server_errno(errno);
     
@@ -222,14 +233,14 @@ grpc::Status WowFSServiceImpl::Writeback(
     if ( outputFd == -1 ) {
       // there may be a case when a file is deleted on the server, while another user
       // writes back to it later, therefore we should create a file if it doesn't exist
-      outputFd = open( req.path().c_str(), O_WRONLY | O_CREAT );
+      outputFd = open( (this->basedir_ + req.path()).c_str(), O_WRONLY | O_CREAT );
       if ( outputFd == -1 ) {
         // something went wrong
         response->set_ret( -1 );
         response->set_server_errno( errno );
         return grpc::Status::OK;
       }
-      std::cerr << "file opened for writing: " << req.path() << std::endl;
+      std::cerr << "file opened for writing: " << this->basedir_ + req.path() << std::endl;
     }
     auto res = pwrite( outputFd, req.buf().data(), req.size(), req.offset() );
     if ( res == -1 ) {
@@ -253,7 +264,7 @@ grpc::Status WowFSServiceImpl::Writeback(
 grpc::Status WowFSServiceImpl::Unlink(grpc::ServerContext* context, const wowfs::UnlinkRequest* request, 
                       wowfs::UnlinkResponse* response) 
 {
-    int ret = unlink(request->path().c_str());
+    int ret = unlink((this->basedir_ + request->path()).c_str());
     response->set_ret(ret);
     response->set_server_errno(errno);
 
@@ -263,7 +274,9 @@ grpc::Status WowFSServiceImpl::Unlink(grpc::ServerContext* context, const wowfs:
 grpc::Status WowFSServiceImpl::Rename(grpc::ServerContext* context, const wowfs::RenameRequest* request, 
                       wowfs::RenameResponse* response) 
 {
-    int ret = rename(request->old_path().c_str(), request->new_path().c_str());
+    int ret = rename(
+        (this->basedir_ + request->old_path()).c_str(), 
+        (this->basedir_ + request->new_path()).c_str());
     response->set_ret(ret);
     response->set_server_errno(errno);
 
