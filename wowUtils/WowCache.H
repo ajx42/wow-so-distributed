@@ -17,6 +17,7 @@ public:
   void registerFileOpen( int32_t fd, std::string filepath );
   bool isFileOpen( std::string filepath );
   std::string getFilePathFromFd( int32_t fd );
+  void deleteFromCache( std::string path );
 private:
   std::string buf;
 
@@ -125,3 +126,11 @@ inline std::string& WowCacheManager::readFile( int32_t fd ) {
   return buf;
 }
 
+inline void WowCacheManager::deleteFromCache( std::string path ) {
+  if(std::filesystem::remove( path )) {
+      LogInfo( "CacheManager deleted file=" + path );
+  } else {
+      std::cout << "FAIL DELETE" << std::endl;
+      LogWarn( "CacheManager failed to delete file=" + path );
+      }
+}

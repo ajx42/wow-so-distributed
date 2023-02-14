@@ -14,6 +14,7 @@ service WowFS {
     rpc Create(CreateRequest) returns (CreateResponse){}
     rpc Writeback(stream StreamWriteRequest) returns (StreamWriteResponse){}
     rpc ReadFile(StreamReadRequest) returns (stream StreamReadResponse){}
+    rpc Unlink(UnlinkRequest) returns (UnlinkResponse){}
 }
 
 message Ack {
@@ -113,3 +114,11 @@ message StreamReadResponse {
     bytes buf = 3;
 }
 
+message UnlinkRequest{
+    string path = 1;
+}
+
+message UnlinkResponse{
+    int32 ret = 1;
+    int32 server_errno = 2;
+}
