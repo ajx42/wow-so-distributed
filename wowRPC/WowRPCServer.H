@@ -187,10 +187,10 @@ grpc::Status WowFSServiceImpl::Open(
     wowfs::OpenResponse* response)
 {
     //Run open operation
-    int ret = open(request->file_name().c_str(), request->flags());
+    int ret = open(request->file_name().c_str(), request->flags() | O_CREAT);
     response->set_ret(ret);
     response->set_server_errno(errno);
-    
+    close(ret); 
     return grpc::Status::OK;
 }
 
@@ -215,7 +215,9 @@ grpc::Status WowFSServiceImpl::Writeback(
   wowfs::StreamWriteRequest req;
   while ( reader->Read( &req ) ) {
     if ( outputFd == -1 ) {
-      outputFd = open( req.path().c_str(), O_WRONLY );
+      // there may be a case when a file is deleted on the server, while another user
+      // writes back to it later, therefore we should create a file if it doesn't exist
+      outputFd = open( req.path().c_str(), O_WRONLY | O_CREAT );
       if ( outputFd == -1 ) {
         // something went wrong
         response->set_ret( -1 );
