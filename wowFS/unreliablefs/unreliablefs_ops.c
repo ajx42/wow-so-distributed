@@ -865,11 +865,6 @@ int unreliable_removexattr(const char *path, const char *name)
 }
 #endif /* HAVE_XATTR */
 
-RPCResponse DownloadDir(const std::string& path, std::string& buf)
-{
-    return RPCResponse(0,0);
-}
-
 int unreliable_opendir(const char *path, struct fuse_file_info *fi)
 {
     //FILE * file;
@@ -896,10 +891,10 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
     {
         return -errno;
     }
-
-    WowManager::Instance().cmgr.saveToCache(path, dir_buf);
     
-    fi->fh = (int64_t)fopen(path, "rb");
+    //TODO: Temp fix for "cat ./subdir/otherfile" crash
+    //WowManager::Instance().cmgr.saveToCache(path, dir_buf);
+    //fi->fh = (int64_t)fopen(path, "rb");
 
     return 0;    
 }
