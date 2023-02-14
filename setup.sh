@@ -7,9 +7,6 @@ mkdir /tmp/wowfs_local
 mkdir /tmp/wowfs_remote
 mkdir /tmp/wowfs_remote/subdir
 
-#Mount FUSE fs.
-./build/wowFS/unreliablefs/wowfs /tmp/wowfs -basedir=/tmp/wowfs_local -seed=1618680646 -d
-
 #Write config file
 cat << EOF > /tmp/wowfs_local/unreliablefs.conf
 [errinj_noop]
@@ -28,6 +25,9 @@ this is a
 second sample
 file
 EOF
+
+#Mount FUSE fs.
+./build/wowFS/unreliablefs/wowfs /tmp/wowfs -basedir=/tmp/wowfs_local -seed=1618680646 -d
 
 #Start up file server
 # ./build/wowRPC/server
