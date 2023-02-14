@@ -867,7 +867,8 @@ int unreliable_removexattr(const char *path, const char *name)
 
 int unreliable_opendir(const char *path, struct fuse_file_info *fi)
 {
-    LogWarn("unreliable_opendir called, and we don't know what to do with it");
+    LogWarn("unreliable_opendir called, and we don't know what to do with it: " + std::string(path));
+    return 0;
 
     int ret = error_inject(path, OP_OPENDIR);
     if (ret == -ERRNO_NOOP) {
@@ -942,6 +943,9 @@ int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 int unreliable_releasedir(const char *path, struct fuse_file_info *fi)
 {
+    LogWarn("unreliable_releasedir called, and we don't know what to do with it: " + std::string(path));
+    return 0;
+
     FILE * file;
     file = fopen(WOWFS_LOG_FILE, "a");
     fprintf(file, "releasedir %s\n", path);
