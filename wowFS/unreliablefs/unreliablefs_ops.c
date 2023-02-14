@@ -890,7 +890,8 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
     //DIR *dir = opendir(converted_path);
 
     std::string dir_buf;
-    RPCResponse response = DownloadDir(std::string(converted_path), dir_buf);
+    //RPCResponse response = DownloadDir(std::string(converted_path), dir_buf);
+    auto response = WowManager::Instance().client.DownloadDir(std::string(converted_path), dir_buf);
     if (response.ret_ < 0)
     {
         return -errno;
@@ -925,7 +926,8 @@ int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     convert_path(converted_path);
     
     std::string dir_buf;
-    RPCResponse response = DownloadDir(std::string(converted_path), dir_buf);
+    //RPCResponse response = DownloadDir(std::string(converted_path), dir_buf);
+    auto response = WowManager::Instance().client.DownloadDir(std::string(converted_path), dir_buf);
     if (response.ret_ < 0)
     {
         return -errno;
