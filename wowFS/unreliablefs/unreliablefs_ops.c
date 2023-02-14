@@ -19,6 +19,7 @@
 #define ERRNO_NOOP -999
 
 #include "unreliablefs_ops.h"
+#include "WowLogger.H"
 #include <fstream>
 #include <string>
 #include <vector>
@@ -864,12 +865,18 @@ int unreliable_removexattr(const char *path, const char *name)
 }
 #endif /* HAVE_XATTR */
 
+RPCResponse DownloadDir(const std::string& path, std::string& buf)
+{
+    return RPCResponse(0,0);
+}
+
 int unreliable_opendir(const char *path, struct fuse_file_info *fi)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "opendir %s\n", path);
-    fclose(file);
+    //FILE * file;
+    LogError(std::string("opendir ") + std::string(path));
+    //file = fopen(WOWFS_LOG_FILE, "a");
+    //fprintf(file, "opendir %s\n", path);
+    //fclose(file);
     int ret = error_inject(path, OP_OPENDIR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -880,16 +887,22 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
     char converted_path[100];
     strcpy(converted_path, path);
     convert_path(converted_path);
-    DIR *dir = opendir(converted_path);
-    //DIR *dir = opendir(path);
+    //DIR *dir = opendir(converted_path);
 
-    if (!dir) {
+    std::string dir_buf;
+    RPCResponse response = DownloadDir(std::string(converted_path), dir_buf);
+    if (response.ret_ < 0)
+    {
         return -errno;
     }
-    fi->fh = (int64_t) dir;
+
+    WowManager::Instance().cmgr.saveToCache(path, dir_buf);
+    
+    fi->fh = (int64_t)fopen(path, "rb");
 
     return 0;    
 }
+
 
 int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                        off_t offset, struct fuse_file_info *fi)
@@ -910,17 +923,20 @@ int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     char converted_path[100];
     strcpy(converted_path, path);
     convert_path(converted_path);
-    DIR *dp = opendir(converted_path);
-
-    if (dp == NULL) {
-	return -errno;
+    
+    std::string dir_buf;
+    RPCResponse response = DownloadDir(std::string(converted_path), dir_buf);
+    if (response.ret_ < 0)
+    {
+        return -errno;
     }
+    
+    const char * data_ptr = dir_buf.c_str();
     struct dirent *de;
+    for(int i = 0; i < dir_buf.size(); i+=sizeof(struct dirent))
+    {
+        de = (struct dirent*)(data_ptr+i);
 
-    (void) offset;
-    (void) fi;
-
-    while ((de = readdir(dp)) != NULL) {
         struct stat st;
         memset(&st, 0, sizeof(st));
         st.st_ino = de->d_ino;
@@ -928,7 +944,18 @@ int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         if (filler(buf, de->d_name, &st, 0))
             break;
     }
-    closedir(dp);
+
+    (void) offset;
+    (void) fi;
+    //while ((de = readdir(dp)) != NULL) {
+    //    struct stat st;
+    //    memset(&st, 0, sizeof(st));
+    //    st.st_ino = de->d_ino;
+    //    st.st_mode = de->d_type << 12;
+    //    if (filler(buf, de->d_name, &st, 0))
+    //        break;
+    //}
+    //closedir(dp);
 
     return 0;
 }
