@@ -134,7 +134,7 @@ int unreliable_getattr(const char *path, struct stat *buf)
     } else if (ret) {
         return ret;
     }
-
+    
     char converted_path[100];
     strcpy(converted_path, path);
     convert_path(converted_path);
@@ -478,8 +478,6 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
     if ( res == 0 ) {
       // there is a file on the server, let's pull it
       auto fileSize = serverStat.st_size;
-      logline("file found on server, with size: " + std::string(std::to_string(fileSize)));
-      // @TODO -- make sure the path to file exists!!!
       std::string readBuf;
       auto response = WowManager::Instance().client.DownloadFile(
         std::string(converted_path), readBuf, fileSize);
@@ -487,9 +485,10 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
         // there is a file on the server, but we are not able to read it!
         return -response.server_errno_;
       }
+      // CacheManager will ensure that directory tree path to saved file is built.
       if ( WowManager::Instance().cmgr.saveToCache(path, readBuf) < 0 ) {
         // failed to save to cache
-        return -response.server_errno_;
+        return -1;
       }
     } else {
       // there is no file on the server
@@ -497,6 +496,7 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
       auto response = WowManager::Instance().client.Open(
         std::string(converted_path), fi->flags);
       if ( response.ret_ == -1 ) {
+        LogWarn("Could not create file on server: " + std::string( converted_path ) );
         // we are not able to create file on the server
         return -response.server_errno_;
       }
@@ -508,6 +508,9 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
       // at this point there is a file on the server, but not on the client
       return -errno;     
     }
+    
+    // tell cache manager about this file 
+    WowManager::Instance().cmgr.registerFileOpen( ret, path );
 
     fi->fh = ret;
     return 0;
@@ -584,6 +587,7 @@ int unreliable_write(const char *path, const char *buf, size_t size,
         ret = -errno;
     }
 
+
     if(fi == NULL) {
         close(fd);
     }
@@ -642,7 +646,7 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
     file = fopen(WOWFS_LOG_FILE, "a");
     fprintf(file, "release %s\n", path);
     fclose(file);
-
+    
     int ret = error_inject(path, OP_RELEASE);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -674,15 +678,22 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
 
     // read local buffer
     auto& readBuf = WowManager::Instance().cmgr.readFile(fi->fh);
-
+    
     // we reach here, it means we need to writeback
-    auto res = WowManager::Instance().client.Writeback(converted_path, readBuf);
-    if ( res.ret_ == -1 ) {
-      logline("write back failed to server, local writes will be lost");
-      return -res.server_errno_;
+    if ( ! readBuf.empty() ) {
+      // we will only write if read was successful
+      auto res = WowManager::Instance().client.Writeback(converted_path, readBuf);
+      if ( res.ret_ == -1 ) {
+        LogWarn("write back failed to server, local writes will be lost");
+        return -res.server_errno_;
+      }
     }
 
-    ret = close(fi->fh);
+    auto fd = fi->fh;
+
+    ret = close(fd);
+    // tell CacheManager that the file has been closed
+    WowManager::Instance().cmgr.registerFileClose( fd );
 
     if (ret == -1) {
         return -errno;
@@ -1054,13 +1065,15 @@ int unreliable_create(const char *path, mode_t mode,
     }
     fprintf(file, "\tserver create success\n");
     fclose(file);
-
+    
     ret = open(path, fi->flags, mode);
     if ( ret == -1 ) {
       std::cerr << "create failed [ " << std::string(path) << " ] client failed" << std::endl;
       return -errno;
     }
-
+    
+    // tell CacheManager about this file
+    WowManager::Instance().cmgr.registerFileOpen(ret, path);
     fi->fh = ret;
     return 0; 
 }
