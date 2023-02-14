@@ -867,11 +867,8 @@ int unreliable_removexattr(const char *path, const char *name)
 
 int unreliable_opendir(const char *path, struct fuse_file_info *fi)
 {
-    //FILE * file;
-    LogError(std::string("opendir ") + std::string(path));
-    //file = fopen(WOWFS_LOG_FILE, "a");
-    //fprintf(file, "opendir %s\n", path);
-    //fclose(file);
+    LogWarn("unreliable_opendir called, and we don't know what to do with it");
+
     int ret = error_inject(path, OP_OPENDIR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -882,10 +879,9 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
     char converted_path[100];
     strcpy(converted_path, path);
     convert_path(converted_path);
-    //DIR *dir = opendir(converted_path);
+
 
     std::string dir_buf;
-    //RPCResponse response = DownloadDir(std::string(converted_path), dir_buf);
     auto response = WowManager::Instance().client.DownloadDir(std::string(converted_path), dir_buf);
     if (response.ret_ < 0)
     {
@@ -921,7 +917,6 @@ int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     convert_path(converted_path);
     
     std::string dir_buf;
-    //RPCResponse response = DownloadDir(std::string(converted_path), dir_buf);
     auto response = WowManager::Instance().client.DownloadDir(std::string(converted_path), dir_buf);
     if (response.ret_ < 0)
     {
@@ -941,18 +936,6 @@ int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         if (filler(buf, de->d_name, &st, 0))
             break;
     }
-
-    (void) offset;
-    (void) fi;
-    //while ((de = readdir(dp)) != NULL) {
-    //    struct stat st;
-    //    memset(&st, 0, sizeof(st));
-    //    st.st_ino = de->d_ino;
-    //    st.st_mode = de->d_type << 12;
-    //    if (filler(buf, de->d_name, &st, 0))
-    //        break;
-    //}
-    //closedir(dp);
 
     return 0;
 }
