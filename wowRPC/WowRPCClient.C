@@ -292,3 +292,17 @@ RPCResponse WowRPCClient::DownloadDir(
   }
 }
 
+RPCResponse WowRPCClient::Unlink( const std::string& path ){
+  wowfs::UnlinkRequest request;
+  wowfs::UnlinkResponse response;
+  grpc::ClientContext context;
+
+  request.set_path( path );
+  
+  auto status = stub_->Unlink( &context, request, &response );
+
+  if ( !status.ok() ) {
+    return RPCResponse(-1, -1);
+  }
+  return RPCResponse( response.ret(), response.server_errno() );
+}

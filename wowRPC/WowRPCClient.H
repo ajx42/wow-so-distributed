@@ -34,6 +34,7 @@ public:
   RPCResponse DownloadFile( const std::string& path, std::string& buf, size_t size ); 
   RPCResponse DownloadDir( const std::string& path, std::string& buf );
 
+  RPCResponse Unlink( const std::string& path );
 private:
   std::unique_ptr<wowfs::WowFS::Stub> stub_;
 };

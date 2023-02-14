@@ -51,6 +51,9 @@ class WowFSServiceImpl final : public wowfs::WowFS::Service
 
   grpc::Status ReadDir(grpc::ServerContext*, const wowfs::StreamReadRequest*,
       grpc::ServerWriter<wowfs::StreamReadResponse>*);
+    
+  grpc::Status Unlink(grpc::ServerContext*, const wowfs::UnlinkRequest*, 
+                      wowfs::UnlinkResponse*);
 };
 
 grpc::Status WowFSServiceImpl::TestCall( 
@@ -289,4 +292,14 @@ grpc::Status WowFSServiceImpl::ReadDir(
   }
   return grpc::Status::OK;
 }
+grpc::Status WowFSServiceImpl::Unlink(grpc::ServerContext* context, const wowfs::UnlinkRequest* request, 
+                      wowfs::UnlinkResponse* response) 
+{
+    int ret = unlink(request->path().c_str());
+    response->set_ret(ret);
+    response->set_server_errno(errno);
+
+    return grpc::Status::OK;
+}
+
 

@@ -265,10 +265,23 @@ int unreliable_unlink(const char *path)
         return ret;
     }
 
-    ret = unlink(path); 
-    if (ret == -1) {
-        return -errno;
+    // unlink at server
+    char converted_path[100];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+
+    RPCResponse response = WowManager::Instance().client.Unlink(std::string(converted_path));
+
+    file = fopen(WOWFS_LOG_FILE, "a");
+    if (response.ret_ == -1) {
+        fprintf(file, "\tserver unlink failed: errno %d\n", response.server_errno_);
+        fclose(file);
+        return -response.server_errno_;
     }
+    fprintf(file, "\tserver unlink success\n");
+
+    // Unlink locally
+    WowManager::Instance().cmgr.deleteFromCache(std::string(path));
 
     return 0;
 }
