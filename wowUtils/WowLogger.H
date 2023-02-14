@@ -11,7 +11,7 @@
 
 namespace  WowLogger
 {
-  void LogBasic( std::string kind, const char* filename, int line, std::string str )
+  inline void LogBasic( std::string kind, const char* filename, int line, std::string str )
   {
     std::ofstream off("/tmp/logs.unreliable.txt", std::ios_base::app);
     off << std::string(kind) << " [" << std::string(filename) 
@@ -30,17 +30,17 @@ namespace  WowLogger
     return file;
   }
 
-  void Info(const char* filename, int line, std::string str)
+  inline void Info(const char* filename, int line, std::string str)
   {
     LogBasic("INFO", filename, line, str);  
   }
 
-  void Warn(const char* filename, int line, std::string str)
+  inline void Warn(const char* filename, int line, std::string str)
   {
     LogBasic("WARN", filename, line, str);
   }
 
-  void Error(const char* filename, int line, std::string str)
+  inline void Error(const char* filename, int line, std::string str)
   {
     LogBasic("ERROR", filename, line, str);
   }
