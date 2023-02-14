@@ -364,10 +364,27 @@ int unreliable_rename(const char *oldpath, const char *newpath)
         return ret;
     }
 
-    ret = rename(oldpath, newpath);
-    if (ret == -1) {
-        return -errno;
+    // rename at server
+    char converted_oldpath[100];
+    strcpy(converted_oldpath, oldpath);
+    convert_path(converted_oldpath);
+
+    char converted_newpath[100];
+    strcpy(converted_newpath, newpath);
+    convert_path(converted_newpath);
+
+    RPCResponse response = WowManager::Instance().client.Rename(
+        std::string(converted_oldpath), std::string(converted_newpath));
+
+    file = fopen(WOWFS_LOG_FILE, "a");
+    if (response.ret_ == -1) {
+        fprintf(file, "\tserver rename failed: errno %d\n", response.server_errno_);
+        fclose(file);
+        return -response.server_errno_;
     }
+
+    // rename locally
+    WowManager::Instance().cmgr.rename(std::string(oldpath), std::string(newpath));
 
     return 0;
 }

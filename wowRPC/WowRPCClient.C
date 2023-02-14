@@ -306,3 +306,19 @@ RPCResponse WowRPCClient::Unlink( const std::string& path ){
   }
   return RPCResponse( response.ret(), response.server_errno() );
 }
+
+RPCResponse WowRPCClient::Rename( const std::string& oldPath, const std::string& newPath ){
+  wowfs::RenameRequest request;
+  wowfs::RenameResponse response;
+  grpc::ClientContext context;
+
+  request.set_old_path( oldPath );
+  request.set_new_path( newPath );
+  
+  auto status = stub_->Rename( &context, request, &response );
+
+  if ( !status.ok() ) {
+    return RPCResponse(-1, -1);
+  }
+  return RPCResponse( response.ret(), response.server_errno() );
+}

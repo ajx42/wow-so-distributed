@@ -16,6 +16,7 @@ service WowFS {
     rpc ReadFile(StreamReadRequest) returns (stream StreamReadResponse){}
     rpc ReadDir(StreamReadRequest) returns (stream StreamReadResponse){}
     rpc Unlink(UnlinkRequest) returns (UnlinkResponse){}
+    rpc Rename(RenameRequest) returns (RenameResponse){}
 }
 
 message Ack {
@@ -120,6 +121,16 @@ message UnlinkRequest{
 }
 
 message UnlinkResponse{
+    int32 ret = 1;
+    int32 server_errno = 2;
+}
+
+message RenameRequest{
+    string old_path = 1;
+    string new_path = 2;
+}
+
+message RenameResponse{
     int32 ret = 1;
     int32 server_errno = 2;
 }
