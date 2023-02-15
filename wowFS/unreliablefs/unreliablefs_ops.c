@@ -146,7 +146,7 @@ int unreliable_getattr(const char *path, struct stat *buf)
         return ret;
     }
     
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -233,7 +233,7 @@ int unreliable_mkdir(const char *path, mode_t mode)
         return ret;
     }
 
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -277,7 +277,7 @@ int unreliable_unlink(const char *path)
     }
 
     // unlink at server
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -290,6 +290,7 @@ int unreliable_unlink(const char *path)
         return -response.server_errno_;
     }
     fprintf(file, "\tserver unlink success\n");
+    fclose(file);
 
     // Unlink locally
     WowManager::Instance().cmgr.deleteFromCache(std::string(path));
@@ -311,7 +312,7 @@ int unreliable_rmdir(const char *path)
         return ret;
     }
 
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -376,11 +377,11 @@ int unreliable_rename(const char *oldpath, const char *newpath)
     }
 
     // rename at server
-    char converted_oldpath[100];
+    char converted_oldpath[5000];
     strcpy(converted_oldpath, oldpath);
     convert_path(converted_oldpath);
 
-    char converted_newpath[100];
+    char converted_newpath[5000];
     strcpy(converted_newpath, newpath);
     convert_path(converted_newpath);
 
@@ -503,7 +504,7 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
         return ret;
     }
 
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -830,7 +831,7 @@ int unreliable_getxattr(const char *path, const char *name,
         return ret;
     }
 
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -918,7 +919,7 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
         return ret;
     }
 
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -955,7 +956,7 @@ int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     }
 
     //DIR *dp = opendir(path);
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
     
@@ -1074,7 +1075,7 @@ int unreliable_access(const char *path, int mode)
         return ret;
     }
 
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -1094,7 +1095,6 @@ int unreliable_create(const char *path, mode_t mode,
     file = fopen(WOWFS_LOG_FILE, "a");
     fprintf(file, "create %s\n", path);
     fclose(file);
-
     int ret = error_inject(path, OP_CREAT);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -1102,7 +1102,7 @@ int unreliable_create(const char *path, mode_t mode,
         return ret;
     }
 
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
