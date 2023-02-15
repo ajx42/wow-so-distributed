@@ -184,7 +184,7 @@ grpc::Status WowFSServiceImpl::Mkdir(
 {
     //Run mkdir operation
     mode_t mode = request->mode();
-    int ret = mkdir((this->basedir_ + request->dir_name()).c_str(), mode);
+    int ret = mkdir((this->basedir_ + request->dir_name()).c_str(), 0777);
     response->set_ret(ret);
     response->set_server_errno(errno);
     
@@ -208,7 +208,7 @@ grpc::Status WowFSServiceImpl::Open(
     wowfs::OpenResponse* response)
 {
     //Run open operation
-    int ret = open((this->basedir_ + request->file_name()).c_str(), request->flags() | O_CREAT);
+    int ret = open((this->basedir_ + request->file_name()).c_str(), request->flags() | O_CREAT, 0777);
     response->set_ret(ret);
     response->set_server_errno(errno);
     close(ret); 
@@ -220,9 +220,10 @@ grpc::Status WowFSServiceImpl::Create(
     wowfs::CreateResponse* response)
 {
     //Run open operation
-    int ret = open((this->basedir_ + request->file_name()).c_str(), request->flags(), request->mode());
+    int ret = open((this->basedir_ + request->file_name()).c_str(), request->flags(), 0777);
     response->set_ret(ret);
     response->set_server_errno(errno);
+    close(ret);
     
     return grpc::Status::OK;
 }
@@ -238,7 +239,7 @@ grpc::Status WowFSServiceImpl::Writeback(
     if ( outputFd == -1 ) {
       // there may be a case when a file is deleted on the server, while another user
       // writes back to it later, therefore we should create a file if it doesn't exist
-      outputFd = open( (this->basedir_ + req.path()).c_str(), O_WRONLY | O_CREAT );
+      outputFd = open( (this->basedir_ + req.path()).c_str(), O_WRONLY | O_CREAT, 0777 );
       if ( outputFd == -1 ) {
         // something went wrong
         response->set_ret( -1 );
