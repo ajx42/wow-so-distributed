@@ -8,12 +8,12 @@ mkdir /tmp/wowfs_remote
 mkdir /tmp/wowfs_remote/subdir
 
 #Write config file
-cat << EOF > /tmp/wowfs_local/unreliablefs.conf
-[errinj_noop]
-op_regexp = .*
-path_regexp = .*
-probability = 0
-EOF
+#cat << EOF > /tmp/wowfs_local/unreliablefs.conf
+#[errinj_noop]
+#op_regexp = .*
+#path_regexp = .*
+#probability = 0
+#EOF
 
 cat << EOF > /tmp/wowfs_remote/sample.file
 this is a sample
