@@ -66,3 +66,7 @@ target_link_libraries(server fs_grpc_proto)
 
 install(TARGETS client server  DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
+check_function_exists(setxattr HAVE_XATTR)
+if (${HAVE_XATTR})
+    target_compile_definitions(server PUBLIC HAVE_XATTR)
+endif ()
