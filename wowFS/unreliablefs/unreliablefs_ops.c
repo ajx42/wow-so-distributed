@@ -715,7 +715,7 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
     }
 
     // @TODO: user a better path conversion mechanism
-    char converted_path[500];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
