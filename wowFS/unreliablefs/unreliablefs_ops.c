@@ -240,14 +240,10 @@ int unreliable_unlink(const char *path)
 
     RPCResponse response = WowManager::Instance().client.Unlink(std::string(converted_path));
 
-    file = fopen(WOWFS_LOG_FILE, "a");
     if (response.ret_ == -1) {
-        fprintf(file, "\tserver unlink failed: errno %d\n", response.server_errno_);
-        fclose(file);
-        return -response.server_errno_;
+      LogWarn("server unlink: failed errno=" + std::to_string(response.server_errno_));
+      return -response.server_errno_;
     }
-    fprintf(file, "\tserver unlink success\n");
-    fclose(file);
 
     // Unlink locally
     WowManager::Instance().cmgr.deleteFromCache(std::string(path));
@@ -330,11 +326,9 @@ int unreliable_rename(const char *oldpath, const char *newpath)
     RPCResponse response = WowManager::Instance().client.Rename(
         std::string(converted_oldpath), std::string(converted_newpath));
 
-    file = fopen(WOWFS_LOG_FILE, "a");
     if (response.ret_ == -1) {
-        fprintf(file, "\tserver rename failed: errno %d\n", response.server_errno_);
-        fclose(file);
-        return -response.server_errno_;
+      LogWarn("rename: failed errno=" + std::to_string(response.server_errno_));  
+      return -response.server_errno_;
     }
 
     // rename locally
