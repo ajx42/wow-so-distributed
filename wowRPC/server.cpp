@@ -4,7 +4,7 @@
 int main()
 {
   std::string server_addr("0.0.0.0:50051");
-  WowFSServiceImpl service;
+  WowFSServiceImpl service("/tmp/wowfs_remote");
 
   grpc::EnableDefaultHealthCheckService( true );
   grpc::reflection::InitProtoReflectionServerBuilderPlugin();

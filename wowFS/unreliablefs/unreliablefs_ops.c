@@ -88,11 +88,21 @@ const char *fuse_op_name[] = {
 
 extern int error_inject(const char* path, fuse_op operation);
 
+void old_convert_path(char * file_path)
+{
+    const char *local_prefix = "/tmp/wowfs_local/";
+    const char *remote_prefix = "/tmp/wowfs_remote/";
+
+    if (strncmp(file_path, local_prefix, strlen(local_prefix)) == 0) {
+        memmove(file_path + strlen(remote_prefix), file_path + strlen(local_prefix), strlen(file_path) - strlen(local_prefix) + 1);
+        memmove(file_path, remote_prefix, strlen(remote_prefix));
+    }
+}
 
 void convert_path(char * file_path)
 {
     const char *local_prefix = "/tmp/wowfs_local/";
-    const char *remote_prefix = "/tmp/wowfs_remote/";
+    const char *remote_prefix = "";
 
     if (strncmp(file_path, local_prefix, strlen(local_prefix)) == 0) {
         memmove(file_path + strlen(remote_prefix), file_path + strlen(local_prefix), strlen(file_path) - strlen(local_prefix) + 1);
@@ -136,7 +146,7 @@ int unreliable_getattr(const char *path, struct stat *buf)
         return ret;
     }
     
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -146,6 +156,7 @@ int unreliable_getattr(const char *path, struct stat *buf)
     RPCResponse response = WowManager::Instance().client.DownloadStat(std::string(converted_path), buf);
 
     file = fopen(WOWFS_LOG_FILE, "a");
+    fprintf(file, "getattr recieved %s %s\n", path, converted_path);
     fprintf(file, "getattr recieved\n");
     fprintf(file, "\tgetattr: response %d\n", response.ret_);
 
@@ -222,7 +233,7 @@ int unreliable_mkdir(const char *path, mode_t mode)
         return ret;
     }
 
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -265,10 +276,24 @@ int unreliable_unlink(const char *path)
         return ret;
     }
 
-    ret = unlink(path); 
-    if (ret == -1) {
-        return -errno;
+    // unlink at server
+    char converted_path[5000];
+    strcpy(converted_path, path);
+    convert_path(converted_path);
+
+    RPCResponse response = WowManager::Instance().client.Unlink(std::string(converted_path));
+
+    file = fopen(WOWFS_LOG_FILE, "a");
+    if (response.ret_ == -1) {
+        fprintf(file, "\tserver unlink failed: errno %d\n", response.server_errno_);
+        fclose(file);
+        return -response.server_errno_;
     }
+    fprintf(file, "\tserver unlink success\n");
+    fclose(file);
+
+    // Unlink locally
+    WowManager::Instance().cmgr.deleteFromCache(std::string(path));
 
     return 0;
 }
@@ -287,7 +312,7 @@ int unreliable_rmdir(const char *path)
         return ret;
     }
 
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -351,10 +376,27 @@ int unreliable_rename(const char *oldpath, const char *newpath)
         return ret;
     }
 
-    ret = rename(oldpath, newpath);
-    if (ret == -1) {
-        return -errno;
+    // rename at server
+    char converted_oldpath[5000];
+    strcpy(converted_oldpath, oldpath);
+    convert_path(converted_oldpath);
+
+    char converted_newpath[5000];
+    strcpy(converted_newpath, newpath);
+    convert_path(converted_newpath);
+
+    RPCResponse response = WowManager::Instance().client.Rename(
+        std::string(converted_oldpath), std::string(converted_newpath));
+
+    file = fopen(WOWFS_LOG_FILE, "a");
+    if (response.ret_ == -1) {
+        fprintf(file, "\tserver rename failed: errno %d\n", response.server_errno_);
+        fclose(file);
+        return -response.server_errno_;
     }
+
+    // rename locally
+    WowManager::Instance().cmgr.rename(std::string(oldpath), std::string(newpath));
 
     return 0;
 }
@@ -462,7 +504,7 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
         return ret;
     }
 
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -673,7 +715,7 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
     }
 
     // @TODO: user a better path conversion mechanism
-    char converted_path[500];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -789,7 +831,7 @@ int unreliable_getxattr(const char *path, const char *name,
         return ret;
     }
 
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -877,7 +919,7 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
         return ret;
     }
 
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -900,6 +942,7 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
 int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                        off_t offset, struct fuse_file_info *fi)
 {
+    // @TODO
     FILE * file;
     file = fopen(WOWFS_LOG_FILE, "a");
     fprintf(file, "readdir %s\n", path);
@@ -913,7 +956,7 @@ int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     }
 
     //DIR *dp = opendir(path);
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
     
@@ -1032,7 +1075,7 @@ int unreliable_access(const char *path, int mode)
         return ret;
     }
 
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
@@ -1052,7 +1095,6 @@ int unreliable_create(const char *path, mode_t mode,
     file = fopen(WOWFS_LOG_FILE, "a");
     fprintf(file, "create %s\n", path);
     fclose(file);
-
     int ret = error_inject(path, OP_CREAT);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -1060,7 +1102,7 @@ int unreliable_create(const char *path, mode_t mode,
         return ret;
     }
 
-    char converted_path[100];
+    char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
 
