@@ -1,4 +1,6 @@
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
@@ -23,18 +25,6 @@
 #include <fstream>
 #include <string>
 #include <vector>
-
-#define WOWFS_LOG_FILE "/tmp/wowfs_local/log"
-namespace
-{
-  void logline(std::string line)
-  {
-    std::ofstream off("/tmp/logs.unreliable.txt", std::ios_base::app);
-    off << std::string(line) << std::endl;
-    // ping server to demonstrate
-    WowManager::Instance().client.Ping(111);
-  }
-}
 
 const char *fuse_op_name[] = {
     "getattr",
@@ -112,10 +102,7 @@ void convert_path(char * file_path)
 
 int unreliable_lstat(const char *path, struct stat *buf)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "lstat %s\n", path);
-    fclose(file);
+    LogInfo("lstat: " + std::string(path));
 
     int ret = error_inject(path, OP_LSTAT);
     if (ret == -ERRNO_NOOP) {
@@ -134,10 +121,7 @@ int unreliable_lstat(const char *path, struct stat *buf)
 
 int unreliable_getattr(const char *path, struct stat *buf)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "getattr %s\n", path);
-    fclose(file);
+    LogInfo("getattr: " + std::string(path));
 
     int ret = error_inject(path, OP_GETATTR);
     if (ret == -ERRNO_NOOP) {
@@ -155,31 +139,19 @@ int unreliable_getattr(const char *path, struct stat *buf)
     //Send request to server for file stat info.
     RPCResponse response = WowManager::Instance().client.DownloadStat(std::string(converted_path), buf);
 
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "getattr recieved %s %s\n", path, converted_path);
-    fprintf(file, "getattr recieved\n");
-    fprintf(file, "\tgetattr: response %d\n", response.ret_);
-
     //Verify response 
     if(response.ret_ == -1)
     {
-        fprintf(file, "\tgetattr: errno %d\n", response.server_errno_);
-        fclose(file);
+        LogWarn("getattr: errno=" + std::to_string(response.server_errno_));
         return -response.server_errno_;
     }
-
-    fprintf(file, "\tgetattr inode : %lu\n", buf->st_ino);
-    fclose(file);
 
     return 0;
 }
 
 int unreliable_readlink(const char *path, char *buf, size_t bufsiz)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "readlink %s\n", path);
-    fclose(file);
+    LogInfo("readlink: " + std::string(path));
 
     int ret = error_inject(path, OP_READLINK);
     if (ret == -ERRNO_NOOP) {
@@ -199,10 +171,7 @@ int unreliable_readlink(const char *path, char *buf, size_t bufsiz)
 
 int unreliable_mknod(const char *path, mode_t mode, dev_t dev)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "mknod %s\n", path);
-    fclose(file);
+    LogInfo("mknod: " + std::string(path));
 
     int ret = error_inject(path, OP_MKNOD);
     if (ret == -ERRNO_NOOP) {
@@ -221,10 +190,7 @@ int unreliable_mknod(const char *path, mode_t mode, dev_t dev)
 
 int unreliable_mkdir(const char *path, mode_t mode)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "mkdir %s\n", path);
-    fclose(file);
+    LogInfo("mkdir: " + std::string(path));
 
     int ret = error_inject(path, OP_MKDIR);
     if (ret == -ERRNO_NOOP) {
@@ -241,33 +207,24 @@ int unreliable_mkdir(const char *path, mode_t mode)
     RPCResponse response = WowManager::Instance().client.Mkdir(
         std::string(converted_path), mode);
 
-    file = fopen(WOWFS_LOG_FILE, "a");
     if (response.ret_ == -1) {
-        fprintf(file, "\tserver mkdir failed: errno %d\n", response.server_errno_);
-        fclose(file);
+        LogWarn(std::string("server mkdir failed: errno=") + std::to_string(response.server_errno_));
         return -response.server_errno_;
     }
-    fprintf(file, "\tserver mkdir success\n");
 
     // Create local directory.
     ret = mkdir(path, mode);
     if (ret == -1) {
-        fprintf(file, "\tlocal mkdir failed, errno %d\n", errno);
-        fclose(file);
+        LogWarn(std::string("local mkdir failed: errno=") + std::to_string(errno));
         return -errno;
     }
-    fprintf(file, "\tlocal mkdir success\n");
-    fclose(file);
 
     return 0;
 }
 
 int unreliable_unlink(const char *path)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "unlink %s\n", path);
-    fclose(file);
+    LogInfo("unlink: " + std::string(path));
 
     int ret = error_inject(path, OP_UNLINK);
     if (ret == -ERRNO_NOOP) {
@@ -283,14 +240,10 @@ int unreliable_unlink(const char *path)
 
     RPCResponse response = WowManager::Instance().client.Unlink(std::string(converted_path));
 
-    file = fopen(WOWFS_LOG_FILE, "a");
     if (response.ret_ == -1) {
-        fprintf(file, "\tserver unlink failed: errno %d\n", response.server_errno_);
-        fclose(file);
-        return -response.server_errno_;
+      LogWarn("server unlink: failed errno=" + std::to_string(response.server_errno_));
+      return -response.server_errno_;
     }
-    fprintf(file, "\tserver unlink success\n");
-    fclose(file);
 
     // Unlink locally
     WowManager::Instance().cmgr.deleteFromCache(std::string(path));
@@ -300,10 +253,7 @@ int unreliable_unlink(const char *path)
 
 int unreliable_rmdir(const char *path)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "rmdir %s\n", path);
-    fclose(file);
+    LogInfo("rmdir: " + std::string(path));
 
     int ret = error_inject(path, OP_RMDIR);
     if (ret == -ERRNO_NOOP) {
@@ -319,33 +269,24 @@ int unreliable_rmdir(const char *path)
     // Send request to server to remove directory.
     RPCResponse response = WowManager::Instance().client.Rmdir(std::string(converted_path));
 
-    file = fopen(WOWFS_LOG_FILE, "a");
     if (response.ret_ == -1) {
-        fprintf(file, "\tserver rmdir failed: errno %d\n", response.server_errno_);
-        fclose(file);
+        LogWarn("server rmdir failed: errno=" + std::to_string(response.server_errno_));
         return -response.server_errno_;
     }
-    fprintf(file, "\tserver rmdir success\n");
 
     // Remove local directory.
     ret = rmdir(path);
     if (ret == -1) {
-        fprintf(file, "\tlocal rmdir failed, errno %d\n", errno);
-        fclose(file);
+        LogWarn("local rmdir failed: errno=" + std::to_string(errno));
         return -1;
     }
-    fprintf(file, "\tlocal rmdir success\n");
-    fclose(file);
 
     return 0;
 }
 
 int unreliable_symlink(const char *target, const char *linkpath)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "symlink %s %s\n", target, linkpath);
-    fclose(file);
+    LogInfo("symlink: " + std::string(target) + " -> " + std::string(linkpath));
 
     int ret = error_inject(target, OP_SYMLINK);
     if (ret == -ERRNO_NOOP) {
@@ -364,10 +305,7 @@ int unreliable_symlink(const char *target, const char *linkpath)
 
 int unreliable_rename(const char *oldpath, const char *newpath)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "rename %s %s\n", oldpath, newpath);
-    fclose(file);
+    LogInfo("rename: " + std::string(oldpath) + " -> " + std::string(newpath));
 
     int ret = error_inject(oldpath, OP_RENAME);
     if (ret == -ERRNO_NOOP) {
@@ -388,11 +326,9 @@ int unreliable_rename(const char *oldpath, const char *newpath)
     RPCResponse response = WowManager::Instance().client.Rename(
         std::string(converted_oldpath), std::string(converted_newpath));
 
-    file = fopen(WOWFS_LOG_FILE, "a");
     if (response.ret_ == -1) {
-        fprintf(file, "\tserver rename failed: errno %d\n", response.server_errno_);
-        fclose(file);
-        return -response.server_errno_;
+      LogWarn("rename: failed errno=" + std::to_string(response.server_errno_));  
+      return -response.server_errno_;
     }
 
     // rename locally
@@ -403,10 +339,7 @@ int unreliable_rename(const char *oldpath, const char *newpath)
 
 int unreliable_link(const char *oldpath, const char *newpath)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "link %s %s\n", oldpath, newpath);
-    fclose(file);
+    LogInfo("link: " + std::string(oldpath) + " -> " + std::string(newpath));
 
     int ret = error_inject(oldpath, OP_LINK);
     if (ret == -ERRNO_NOOP) {
@@ -425,10 +358,7 @@ int unreliable_link(const char *oldpath, const char *newpath)
 
 int unreliable_chmod(const char *path, mode_t mode)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "chmod %s\n", path);
-    fclose(file);
+    LogInfo("chmod: " + std::string(path));
 
     int ret = error_inject(path, OP_CHMOD);
     if (ret == -ERRNO_NOOP) {
@@ -447,10 +377,7 @@ int unreliable_chmod(const char *path, mode_t mode)
 
 int unreliable_chown(const char *path, uid_t owner, gid_t group)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "chown %s\n", path);
-    fclose(file);
+    LogInfo("chown: " + std::string(path));
 
     int ret = error_inject(path, OP_CHOWN);
     if (ret == -ERRNO_NOOP) {
@@ -469,10 +396,7 @@ int unreliable_chown(const char *path, uid_t owner, gid_t group)
 
 int unreliable_truncate(const char *path, off_t length)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "truncate %s\n", path);
-    fclose(file);
+    LogInfo("truncate: " + std::string(path));
 
     int ret = error_inject(path, OP_TRUNCATE);
     if (ret == -ERRNO_NOOP) {
@@ -491,11 +415,7 @@ int unreliable_truncate(const char *path, off_t length)
 
 int unreliable_open(const char *path, struct fuse_file_info *fi)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "open %s\n", path);
-    fclose(file);
-    logline(std::string("wowFS -> open called: ") + std::string(path));
+    LogInfo("open: " + std::string(path));
  
     int ret = error_inject(path, OP_OPEN);
     if (ret == -ERRNO_NOOP) {
@@ -508,12 +428,10 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
     strcpy(converted_path, path);
     convert_path(converted_path);
 
-    bool fetch = true;
-
     // check if the file is already available in cache
     // @TODO decide whether to fetch or not
     // for now we always fetch 
-    fi->fh = -1;
+    fi->fh = 0;
 
     struct stat serverStat;
     // we are using the getattr as a way to figure if file exists on the server
@@ -562,10 +480,7 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
 int unreliable_read(const char *path, char *buf, size_t size, off_t offset,
                     struct fuse_file_info *fi)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "read %s\n", path);
-    fclose(file);
+    LogInfo("read: " + std::string(path));
 
     int ret = error_inject(path, OP_READ);
     if (ret == -ERRNO_NOOP) {
@@ -601,10 +516,7 @@ int unreliable_read(const char *path, char *buf, size_t size, off_t offset,
 int unreliable_write(const char *path, const char *buf, size_t size,
                      off_t offset, struct fuse_file_info *fi)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "write %s\n", path);
-    fclose(file);
+    LogInfo("write: " + std::string(path));
 
     int ret = error_inject(path, OP_WRITE);
     if (ret == -ERRNO_NOOP) {
@@ -640,10 +552,7 @@ int unreliable_write(const char *path, const char *buf, size_t size,
 
 int unreliable_statfs(const char *path, struct statvfs *buf)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "statfs %s\n", path);
-    fclose(file);
+    LogInfo("statfs: " + std::string(path));
 
     int ret = error_inject(path, OP_STATFS);
     if (ret == -ERRNO_NOOP) {
@@ -662,10 +571,7 @@ int unreliable_statfs(const char *path, struct statvfs *buf)
 
 int unreliable_flush(const char *path, struct fuse_file_info *fi)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "flush %s\n", path);
-    fclose(file);
+    LogInfo("flush: " + std::string(path));
 
     int ret = error_inject(path, OP_FLUSH);
     if (ret == -ERRNO_NOOP) {
@@ -684,11 +590,7 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
 
 int unreliable_release(const char *path, struct fuse_file_info *fi)
 {
-    std::cerr << "release called " << std::endl;
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "release %s\n", path);
-    fclose(file);
+    LogInfo("release: " + std::string(path));
     
     int ret = error_inject(path, OP_RELEASE);
     if (ret == -ERRNO_NOOP) {
@@ -697,20 +599,20 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
         return ret;
     }
 
-    if ( fi == nullptr || fi->fh == -1 ) {
-      logline(std::string(path) + " release called on empty fileinfo");
+    if ( fi == nullptr || fi->fh <= 0 ) {
+      LogWarn(std::string(path) + " release called on empty fileinfo");
       return -1; // should this call be considered a success
     }
 
     // write to server
     // validate file header
     if ( ! WowManager::Instance().cmgr.validate(path, fi->fh) ) {
-      logline(std::string(path) + " failed to validate file header");
+      LogWarn(std::string(path) + " failed to validate file header");
       return -1;
     }
 
     if ( ! WowManager::Instance().cmgr.isDirty(path, fi->fh) ) {
-      logline(std::string(path) + " file is not dirty, nothing to write back");
+      LogInfo(std::string(path) + " file is not dirty, nothing to write back");
       return 0;
     }
 
@@ -727,7 +629,8 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
       // we will only write if read was successful
       auto res = WowManager::Instance().client.Writeback(converted_path, readBuf);
       if ( res.ret_ == -1 ) {
-        LogWarn("write back failed to server, local writes will be lost");
+        LogWarn("write back failed to server, local writes will be lost errno="
+          + std::to_string(res.server_errno_));
         return -res.server_errno_;
       }
     }
@@ -747,10 +650,7 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
 
 int unreliable_fsync(const char *path, int datasync, struct fuse_file_info *fi)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "fsync %s\n", path);
-    fclose(file);
+    LogInfo("fsync: " + std::string(path));
 
     int ret = error_inject(path, OP_FSYNC);
     if (ret == -ERRNO_NOOP) {
@@ -787,10 +687,7 @@ int unreliable_setxattr(const char *path, const char *name,
                         const char *value, size_t size, int flags)
 #endif
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "setxattr %s\n", path);
-    fclose(file);
+    LogInfo("setxattr: " + std::string(path));
 
     int ret = error_inject(path, OP_SETXATTR);
     if (ret == -ERRNO_NOOP) {
@@ -819,10 +716,7 @@ int unreliable_getxattr(const char *path, const char *name,
                         char *value, size_t size)
 #endif
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "getxattr %s\n", path);
-    fclose(file);
+    LogInfo("getxattr: " + std::string(path));
 
     int ret = error_inject(path, OP_GETXATTR);
     if (ret == -ERRNO_NOOP) {
@@ -839,27 +733,19 @@ int unreliable_getxattr(const char *path, const char *name,
     RPCResponse response = WowManager::Instance().client.GetXAttr(
         std::string(converted_path), std::string(name), value, size);
 
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "\tgetxattr: response %d\n", response.ret_);
-
     //Verify response 
     if(response.ret_ == -1)
     {
-        fprintf(file, "\tgetxattr: errno %d\n", response.server_errno_);
-        fclose(file);
+        LogWarn("getxattr failed: errno=" + std::to_string(response.server_errno_));
         return -response.server_errno_;
     }
-    fclose(file);
     
     return 0;
 }
 
 int unreliable_listxattr(const char *path, char *list, size_t size)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "listxattr %s\n", path);
-    fclose(file);
+    LogInfo("listxattr: " + std::string(path));
 
     int ret = error_inject(path, OP_LISTXATTR);
     if (ret == -ERRNO_NOOP) {
@@ -882,10 +768,7 @@ int unreliable_listxattr(const char *path, char *list, size_t size)
 
 int unreliable_removexattr(const char *path, const char *name)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "removexattr %s\n", path);
-    fclose(file);
+    LogInfo("removexattr: " + std::string(path));
 
     int ret = error_inject(path, OP_REMOVEXATTR);
     if (ret == -ERRNO_NOOP) {
@@ -912,6 +795,7 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
     LogWarn("unreliable_opendir called, and we don't know what to do with it: " + std::string(path));
     return 0;
 
+    /* @FIXME
     int ret = error_inject(path, OP_OPENDIR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -930,6 +814,7 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
     {
         return -errno;
     }
+    */
     
     //TODO: Temp fix for "cat ./subdir/otherfile" crash
     //WowManager::Instance().cmgr.saveToCache(path, dir_buf);
@@ -942,11 +827,7 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
 int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                        off_t offset, struct fuse_file_info *fi)
 {
-    // @TODO
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "readdir %s\n", path);
-    fclose(file);
+    LogInfo("readdir: " + std::string(path));
 
     int ret = error_inject(path, OP_READDIR);
     if (ret == -ERRNO_NOOP) {
@@ -969,7 +850,7 @@ int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     
     const char * data_ptr = dir_buf.c_str();
     struct dirent *de;
-    for(int i = 0; i < dir_buf.size(); i+=sizeof(struct dirent))
+    for(unsigned int i = 0; i < dir_buf.size(); i+=sizeof(struct dirent))
     {
         de = (struct dirent*)(data_ptr+i);
 
@@ -989,11 +870,7 @@ int unreliable_releasedir(const char *path, struct fuse_file_info *fi)
     LogWarn("unreliable_releasedir called, and we don't know what to do with it: " + std::string(path));
     return 0;
 
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "releasedir %s\n", path);
-    fclose(file);
-
+    /* @FIXME
     int ret = error_inject(path, OP_RELEASEDIR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -1008,16 +885,14 @@ int unreliable_releasedir(const char *path, struct fuse_file_info *fi)
     if (ret == -1) {
         return -errno;
     }
+    */
     
     return 0;    
 }
 
 int unreliable_fsyncdir(const char *path, int datasync, struct fuse_file_info *fi)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "fsyncdir %s\n", path);
-    fclose(file);
+    LogInfo("fsyncdir: " + std::string(path));
 
     int ret = error_inject(path, OP_FSYNCDIR);
     if (ret == -ERRNO_NOOP) {
@@ -1063,10 +938,7 @@ void unreliable_destroy(void *private_data)
 
 int unreliable_access(const char *path, int mode)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "access %s\n", path);
-    fclose(file);
+    LogInfo("access: " + std::string(path));
 
     int ret = error_inject(path, OP_ACCESS);
     if (ret == -ERRNO_NOOP) {
@@ -1081,7 +953,8 @@ int unreliable_access(const char *path, int mode)
 
     RPCResponse response = WowManager::Instance().client.Access(std::string(converted_path), mode);
     if (response.ret_ == -1) {
-        fprintf(file, "access %s failed\n", path);
+        LogWarn("access: failed for " + std::string(path) + " errno="
+          + std::to_string(response.server_errno_));
         return -response.server_errno_;
     }
     
@@ -1091,10 +964,8 @@ int unreliable_access(const char *path, int mode)
 int unreliable_create(const char *path, mode_t mode,
                       struct fuse_file_info *fi)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "create %s\n", path);
-    fclose(file);
+    LogInfo("create: " + std::string(path));
+
     int ret = error_inject(path, OP_CREAT);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -1110,18 +981,14 @@ int unreliable_create(const char *path, mode_t mode,
     RPCResponse response = WowManager::Instance().client.Create(
         std::string(converted_path), mode, fi->flags);
 
-    file = fopen(WOWFS_LOG_FILE, "a");
     if (response.ret_ == -1) {
-        fprintf(file, "\tserver create failed: errno %d\n", response.server_errno_);
-        fclose(file);
+        LogWarn("server create failed: errno=" + std::to_string(response.server_errno_));
         return -response.server_errno_;
     }
-    fprintf(file, "\tserver create success\n");
-    fclose(file);
     
     ret = open(path, fi->flags, mode);
     if ( ret == -1 ) {
-      std::cerr << "create failed [ " << std::string(path) << " ] client failed" << std::endl;
+      LogWarn("client create failed: errno " + std::to_string(errno));
       return -errno;
     }
     
@@ -1134,10 +1001,7 @@ int unreliable_create(const char *path, mode_t mode,
 int unreliable_ftruncate(const char *path, off_t length,
                          struct fuse_file_info *fi)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "ftruncate %s\n", path);
-    fclose(file);
+    LogInfo("ftruncate: " + std::string(path));
 
     int ret = error_inject(path, OP_FTRUNCATE);
     if (ret == -ERRNO_NOOP) {
@@ -1157,10 +1021,7 @@ int unreliable_ftruncate(const char *path, off_t length,
 int unreliable_fgetattr(const char *path, struct stat *buf,
                         struct fuse_file_info *fi)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "fgetattr %s\n", path);
-    fclose(file);
+    LogInfo("fgetattr: " + std::string(path));
 
     //If we want to retrieve the stat from remote (Option B)
     //Assuming we are saving local paths in the FHManager.
@@ -1190,10 +1051,7 @@ int unreliable_fgetattr(const char *path, struct stat *buf,
 int unreliable_lock(const char *path, struct fuse_file_info *fi, int cmd,
                     struct flock *fl)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "lock %s\n", path);
-    fclose(file);
+    LogInfo("lock: " + std::string(path));
 
     int ret = error_inject(path, OP_LOCK);
     if (ret == -ERRNO_NOOP) {
@@ -1215,10 +1073,7 @@ int unreliable_ioctl(const char *path, int cmd, void *arg,
                      struct fuse_file_info *fi,
                      unsigned int flags, void *data)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "ioctl %s\n", path);
-    fclose(file);
+    LogInfo("ioctl: " + std::string(path));
 
     int ret = error_inject(path, OP_IOCTL);
     if (ret == -ERRNO_NOOP) {
@@ -1239,10 +1094,7 @@ int unreliable_ioctl(const char *path, int cmd, void *arg,
 #ifdef HAVE_FLOCK
 int unreliable_flock(const char *path, struct fuse_file_info *fi, int op)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "flock %s\n", path);
-    fclose(file);
+    LogInfo("flock: " + std::string(path));
 
     int ret = error_inject(path, OP_FLOCK);
     if (ret == -ERRNO_NOOP) {
@@ -1265,10 +1117,7 @@ int unreliable_fallocate(const char *path, int mode,
                          off_t offset, off_t len,
                          struct fuse_file_info *fi)
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "fallocate %s\n", path);
-    fclose(file);
+    LogInfo("fallocate: " + std::string(path));
 
     int ret = error_inject(path, OP_FALLOCATE);
     if (ret == -ERRNO_NOOP) {
@@ -1310,10 +1159,7 @@ int unreliable_fallocate(const char *path, int mode,
 #ifdef HAVE_UTIMENSAT
 int unreliable_utimens(const char *path, const struct timespec ts[2])
 {
-    FILE * file;
-    file = fopen(WOWFS_LOG_FILE, "a");
-    fprintf(file, "utimens %s\n", path);
-    fclose(file);
+    LogInfo("utimens: " + std::string(path));
 
     int ret = error_inject(path, OP_UTIMENS);
     if (ret == -ERRNO_NOOP) {
