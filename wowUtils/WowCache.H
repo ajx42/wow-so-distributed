@@ -5,12 +5,15 @@
 #include <filesystem>
 #include "WowLogger.H"
 
+#include <mutex>
+#include <thread>
+
 class WowCacheManager
 {
 public:
   bool validate( std::string path, int32_t fh ) { return true; /*@TODO*/ }
   bool isDirty( std::string path, int32_t fh ) { return true; /*@TODO*/ }
-  std::string& readFile( int32_t fd ); 
+  bool readFile( int32_t fd, std::string& buf ); 
   bool saveToCache( std::string path, const std::string& buf ); 
 
   void registerFileClose( int32_t fd );
@@ -20,8 +23,7 @@ public:
   void deleteFromCache( std::string path );
   void rename( std::string oldPath, std::string newPath );
 private:
-  std::string buf;
-
+  std::mutex mapMutex_;
   // The need for this mapping: we need to map fd <> path to perform file
   // reads before closing. A file may be open in modes that don't allow
   // reads, so we can't just use the fd at hand while closing. The idea is
@@ -37,6 +39,7 @@ private:
 
 inline void WowCacheManager::registerFileClose( int32_t fd )
 {
+  const std::lock_guard<std::mutex> lock( mapMutex_ );
   if ( fdToFilepath_.find( fd ) == fdToFilepath_.end() ) {
     LogWarn( "CacheManager can't register close, unknown fd=" + std::to_string( fd ) );
     return;
@@ -52,6 +55,7 @@ inline void WowCacheManager::registerFileClose( int32_t fd )
 
 inline void WowCacheManager::registerFileOpen( int32_t fd, std::string filepath )
 {
+  const std::lock_guard<std::mutex> lock( mapMutex_ );
   if ( filepathToFreq_.find( filepath ) == filepathToFreq_.end() ) {
     filepathToFreq_[ filepath ] = 0;
   }
@@ -62,10 +66,12 @@ inline void WowCacheManager::registerFileOpen( int32_t fd, std::string filepath 
 
 inline bool WowCacheManager::isFileOpen( std::string filepath )
 {
+  const std::lock_guard<std::mutex> lock( mapMutex_ );
   return filepathToFreq_.find( filepath ) != filepathToFreq_.end();
 }
 
 inline std::string WowCacheManager::getFilePathFromFd( int32_t fd ) {
+  const std::lock_guard<std::mutex> lock( mapMutex_ );
   if ( fdToFilepath_.find( fd ) == fdToFilepath_.end() ) {
     LogWarn( "CacheManager can't find path for unknown fd=" + std::to_string( fd ) );
     return "";
@@ -99,7 +105,8 @@ inline bool WowCacheManager::saveToCache( std::string path, const std::string& b
   return false;
 }
 
-inline std::string& WowCacheManager::readFile( int32_t fd ) {
+inline bool WowCacheManager::readFile( int32_t fd, std::string& buf ) {
+  buf.clear();
   fsync(fd);
 
   // a file may be open in write mode, so we can't read its contents
@@ -123,8 +130,9 @@ inline std::string& WowCacheManager::readFile( int32_t fd ) {
   if ( res < 0 ) {
     buf = "";
     LogWarn( "CacheManager couldn't read file for fd=" + std::to_string( fd ) + " writeback to server will be disabled" );
+    return false;
   }
-  return buf;
+  return true;
 }
 
 inline void WowCacheManager::deleteFromCache( std::string path ) {
