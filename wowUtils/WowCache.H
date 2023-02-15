@@ -131,9 +131,8 @@ inline void WowCacheManager::deleteFromCache( std::string path ) {
   if(std::filesystem::remove( path )) {
       LogInfo( "CacheManager deleted file=" + path );
   } else {
-      std::cout << "FAIL DELETE" << std::endl;
       LogWarn( "CacheManager failed to delete file=" + path );
-      }
+  }
 }
 
 inline void WowCacheManager::rename( std::string oldPath, std::string newPath ) {
