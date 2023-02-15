@@ -447,7 +447,7 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
         return -response.server_errno_;
       }
       // CacheManager will ensure that directory tree path to saved file is built.
-      if ( WowManager::Instance().cmgr.saveToCache(path, readBuf) < 0 ) {
+      if ( ! WowManager::Instance().cmgr.saveToCache(path, readBuf) ) {
         // failed to save to cache
         return -1;
       }
@@ -622,10 +622,11 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
     convert_path(converted_path);
 
     // read local buffer
-    auto& readBuf = WowManager::Instance().cmgr.readFile(fi->fh);
+    std::string readBuf;
+    auto readStatus = WowManager::Instance().cmgr.readFile( fi->fh, readBuf );
     
     // we reach here, it means we need to writeback
-    if ( ! readBuf.empty() ) {
+    if ( ! readBuf.empty() && readStatus ) {
       // we will only write if read was successful
       auto res = WowManager::Instance().client.Writeback(converted_path, readBuf);
       if ( res.ret_ == -1 ) {
