@@ -798,7 +798,6 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
 
     std::string converted_path = WowManager::Instance().removeMountPrefix(path);
 
-
     std::string dir_buf;
     auto response = WowManager::Instance().client.DownloadDir(converted_path, dir_buf);
     if (response.ret_ < 0)
