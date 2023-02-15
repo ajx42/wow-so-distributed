@@ -26,18 +26,6 @@
 #include <string>
 #include <vector>
 
-#define WOWFS_LOG_FILE "/tmp/wowfs_local/log"
-namespace
-{
-  void logline(std::string line)
-  {
-    std::ofstream off("/tmp/logs.unreliable.txt", std::ios_base::app);
-    off << std::string(line) << std::endl;
-    // ping server to demonstrate
-    WowManager::Instance().client.Ping(111);
-  }
-}
-
 const char *fuse_op_name[] = {
     "getattr",
     "readlink",
@@ -114,7 +102,7 @@ void convert_path(char * file_path)
 
 int unreliable_lstat(const char *path, struct stat *buf)
 {
-    LogInfo(std::string("lstat ") + std::string(path));
+    LogInfo("lstat: " + std::string(path));
 
     int ret = error_inject(path, OP_LSTAT);
     if (ret == -ERRNO_NOOP) {
@@ -133,7 +121,7 @@ int unreliable_lstat(const char *path, struct stat *buf)
 
 int unreliable_getattr(const char *path, struct stat *buf)
 {
-    LogInfo(std::string("getattr: ") + std::string(path));
+    LogInfo("getattr: " + std::string(path));
 
     int ret = error_inject(path, OP_GETATTR);
     if (ret == -ERRNO_NOOP) {
@@ -154,7 +142,7 @@ int unreliable_getattr(const char *path, struct stat *buf)
     //Verify response 
     if(response.ret_ == -1)
     {
-        LogWarn(std::string("getattr: errno") + std::to_string(response.server_errno_));
+        LogWarn("getattr: errno=" + std::to_string(response.server_errno_));
         return -response.server_errno_;
     }
 
@@ -163,7 +151,7 @@ int unreliable_getattr(const char *path, struct stat *buf)
 
 int unreliable_readlink(const char *path, char *buf, size_t bufsiz)
 {
-    LogInfo(std::string("readlink: ") + std::string(path));
+    LogInfo("readlink: " + std::string(path));
 
     int ret = error_inject(path, OP_READLINK);
     if (ret == -ERRNO_NOOP) {
@@ -183,7 +171,7 @@ int unreliable_readlink(const char *path, char *buf, size_t bufsiz)
 
 int unreliable_mknod(const char *path, mode_t mode, dev_t dev)
 {
-    LogInfo(std::string("mknod: ") + std::string(path));
+    LogInfo("mknod: " + std::string(path));
 
     int ret = error_inject(path, OP_MKNOD);
     if (ret == -ERRNO_NOOP) {
@@ -202,7 +190,7 @@ int unreliable_mknod(const char *path, mode_t mode, dev_t dev)
 
 int unreliable_mkdir(const char *path, mode_t mode)
 {
-    LogInfo(std::string("mkdir: ") + std::string(path));
+    LogInfo("mkdir: " + std::string(path));
 
     int ret = error_inject(path, OP_MKDIR);
     if (ret == -ERRNO_NOOP) {
@@ -220,14 +208,14 @@ int unreliable_mkdir(const char *path, mode_t mode)
         std::string(converted_path), mode);
 
     if (response.ret_ == -1) {
-        LogWarn(std::string("server mkdir failed: errno ") + std::to_string(response.server_errno_));
+        LogWarn(std::string("server mkdir failed: errno=") + std::to_string(response.server_errno_));
         return -response.server_errno_;
     }
 
     // Create local directory.
     ret = mkdir(path, mode);
     if (ret == -1) {
-        LogWarn(std::string("local mkdir failed: errno ") + std::to_string(errno));
+        LogWarn(std::string("local mkdir failed: errno=") + std::to_string(errno));
         return -errno;
     }
 
@@ -236,7 +224,7 @@ int unreliable_mkdir(const char *path, mode_t mode)
 
 int unreliable_unlink(const char *path)
 {
-    LogInfo(std::string("unlink: ") + std::string(path));
+    LogInfo("unlink: " + std::string(path));
 
     int ret = error_inject(path, OP_UNLINK);
     if (ret == -ERRNO_NOOP) {
@@ -269,7 +257,7 @@ int unreliable_unlink(const char *path)
 
 int unreliable_rmdir(const char *path)
 {
-    LogInfo(std::string("rmdir: ") + std::string(path));
+    LogInfo("rmdir: " + std::string(path));
 
     int ret = error_inject(path, OP_RMDIR);
     if (ret == -ERRNO_NOOP) {
@@ -286,14 +274,14 @@ int unreliable_rmdir(const char *path)
     RPCResponse response = WowManager::Instance().client.Rmdir(std::string(converted_path));
 
     if (response.ret_ == -1) {
-        LogWarn(std::string("server rmdir failed: errno ") + std::to_string(response.server_errno_));
+        LogWarn("server rmdir failed: errno=" + std::to_string(response.server_errno_));
         return -response.server_errno_;
     }
 
     // Remove local directory.
     ret = rmdir(path);
     if (ret == -1) {
-        LogWarn(std::string("local rmdir failed: errno ") + std::to_string(errno));
+        LogWarn("local rmdir failed: errno=" + std::to_string(errno));
         return -1;
     }
 
@@ -302,7 +290,7 @@ int unreliable_rmdir(const char *path)
 
 int unreliable_symlink(const char *target, const char *linkpath)
 {
-    LogInfo("symlink: " + std::string(target) + " " + std::string(linkpath));
+    LogInfo("symlink: " + std::string(target) + " -> " + std::string(linkpath));
 
     int ret = error_inject(target, OP_SYMLINK);
     if (ret == -ERRNO_NOOP) {
@@ -321,7 +309,7 @@ int unreliable_symlink(const char *target, const char *linkpath)
 
 int unreliable_rename(const char *oldpath, const char *newpath)
 {
-    LogInfo("rename: " + std::string(oldpath) + " " + std::string(newpath));
+    LogInfo("rename: " + std::string(oldpath) + " -> " + std::string(newpath));
 
     int ret = error_inject(oldpath, OP_RENAME);
     if (ret == -ERRNO_NOOP) {
@@ -357,7 +345,7 @@ int unreliable_rename(const char *oldpath, const char *newpath)
 
 int unreliable_link(const char *oldpath, const char *newpath)
 {
-    LogInfo("link: " + std::string(oldpath) + " " + std::string(newpath));
+    LogInfo("link: " + std::string(oldpath) + " -> " + std::string(newpath));
 
     int ret = error_inject(oldpath, OP_LINK);
     if (ret == -ERRNO_NOOP) {
@@ -446,12 +434,10 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
     strcpy(converted_path, path);
     convert_path(converted_path);
 
-    bool fetch = true;
-
     // check if the file is already available in cache
     // @TODO decide whether to fetch or not
     // for now we always fetch 
-    fi->fh = -1;
+    fi->fh = 0;
 
     struct stat serverStat;
     // we are using the getattr as a way to figure if file exists on the server
@@ -619,7 +605,7 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
         return ret;
     }
 
-    if ( fi == nullptr || fi->fh == -1 ) {
+    if ( fi == nullptr || fi->fh <= 0 ) {
       LogWarn(std::string(path) + " release called on empty fileinfo");
       return -1; // should this call be considered a success
     }
@@ -632,7 +618,7 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
     }
 
     if ( ! WowManager::Instance().cmgr.isDirty(path, fi->fh) ) {
-      logline(std::string(path) + " file is not dirty, nothing to write back");
+      LogInfo(std::string(path) + " file is not dirty, nothing to write back");
       return 0;
     }
 
@@ -649,7 +635,8 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
       // we will only write if read was successful
       auto res = WowManager::Instance().client.Writeback(converted_path, readBuf);
       if ( res.ret_ == -1 ) {
-        LogWarn("write back failed to server, local writes will be lost");
+        LogWarn("write back failed to server, local writes will be lost errno="
+          + std::to_string(res.server_errno_));
         return -res.server_errno_;
       }
     }
@@ -755,7 +742,7 @@ int unreliable_getxattr(const char *path, const char *name,
     //Verify response 
     if(response.ret_ == -1)
     {
-        LogWarn("getxattr: errno " + std::to_string(response.server_errno_));
+        LogWarn("getxattr failed: errno=" + std::to_string(response.server_errno_));
         return -response.server_errno_;
     }
     
@@ -814,6 +801,7 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
     LogWarn("unreliable_opendir called, and we don't know what to do with it: " + std::string(path));
     return 0;
 
+    /* @FIXME
     int ret = error_inject(path, OP_OPENDIR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -832,6 +820,7 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
     {
         return -errno;
     }
+    */
     
     //TODO: Temp fix for "cat ./subdir/otherfile" crash
     //WowManager::Instance().cmgr.saveToCache(path, dir_buf);
@@ -887,6 +876,7 @@ int unreliable_releasedir(const char *path, struct fuse_file_info *fi)
     LogWarn("unreliable_releasedir called, and we don't know what to do with it: " + std::string(path));
     return 0;
 
+    /* @FIXME
     int ret = error_inject(path, OP_RELEASEDIR);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -901,6 +891,7 @@ int unreliable_releasedir(const char *path, struct fuse_file_info *fi)
     if (ret == -1) {
         return -errno;
     }
+    */
     
     return 0;    
 }
@@ -968,7 +959,8 @@ int unreliable_access(const char *path, int mode)
 
     RPCResponse response = WowManager::Instance().client.Access(std::string(converted_path), mode);
     if (response.ret_ == -1) {
-        LogWarn("access: failed" + std::string(path));
+        LogWarn("access: failed for " + std::string(path) + " errno="
+          + std::to_string(response.server_errno_));
         return -response.server_errno_;
     }
     
@@ -996,7 +988,7 @@ int unreliable_create(const char *path, mode_t mode,
         std::string(converted_path), mode, fi->flags);
 
     if (response.ret_ == -1) {
-        LogWarn("server create failed: errno " + std::to_string(response.server_errno_));
+        LogWarn("server create failed: errno=" + std::to_string(response.server_errno_));
         return -response.server_errno_;
     }
     
