@@ -81,7 +81,7 @@ inline bool WowCacheManager::saveToCache( std::string path, const std::string& b
   }
   // we are assuming path is a file path, so should not end in '/'
   std::string dirTree;
-  for ( int i = 0; i < path.size(); ++i ) {
+  for ( unsigned int i = 0; i < path.size(); ++i ) {
     if ( path[i] == '/' ) {
       dirTree = path.substr(0, i);
     }
