@@ -9,7 +9,7 @@ tmux split-window -v -t 0
 
 tmux send-keys -t 1 "./setup.sh" C-m
 
-sleep 1
+sleep 2
 
 tmux send-keys -t 2 "cd /tmp/wowfs" C-m
 

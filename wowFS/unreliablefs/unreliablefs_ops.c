@@ -144,15 +144,32 @@ int unreliable_getattr(const char *path, struct stat *buf)
     std::string converted_path = WowManager::Instance().removeMountPrefix(path);
 
     memset(buf, 0, sizeof(struct stat));
-    
-    //Send request to server for file stat info.
-    RPCResponse response = WowManager::Instance().client.DownloadStat(converted_path, buf);
 
-    //Verify response 
-    if(response.ret_ == -1)
+    //TODO: We don't need to fetch server twice, save it in the poll
+    if(should_fetch(path))
     {
-        LogWarn("getattr: errno=" + std::to_string(response.server_errno_));
-        return -response.server_errno_;
+        //Run stat on remote
+        //Send request to server for file stat info.
+        RPCResponse response = WowManager::Instance().client.DownloadStat(converted_path, buf);
+
+        //Verify response 
+        if(response.ret_ == -1)
+        {
+            LogWarn("getattr remote: errno=" + std::to_string(response.server_errno_));
+            return -response.server_errno_;
+        }
+    }
+    else
+    {
+        //Run stat locally
+        int local_ret = stat(path, buf);
+
+        //Verify response 
+        if(local_ret < 0)
+        {
+            LogWarn("getattr local: errno=" + std::to_string(errno));
+            return errno;
+        }
     }
 
     return 0;
@@ -430,10 +447,13 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
     // for now we always fetch 
     fi->fh = 0;
 
-    struct stat serverStat;
-    // we are using the getattr as a way to figure if file exists on the server
-    auto res = unreliable_getattr( path, &serverStat );
-    if ( res == 0 ) {
+
+    //if ( res == 0 ) {
+    if(should_fetch(path))
+    {
+      struct stat serverStat;
+      // we are using the getattr as a way to figure if file exists on the server
+      auto res = unreliable_getattr( path, &serverStat );
       // there is a file on the server, let's pull it
       auto fileSize = serverStat.st_size;
       std::string readBuf;
