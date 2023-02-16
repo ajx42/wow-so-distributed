@@ -47,6 +47,14 @@ namespace  WowLogger
 
 }
 
+#define ENABLE_MACRO 1
+
+#ifdef ENABLE_MACRO
 #define LogInfo(x) WowLogger::Info(WowLogger::filename(__FILE__), __LINE__, x);
 #define LogWarn(x) WowLogger::Warn(WowLogger::filename(__FILE__), __LINE__, x);
 #define LogError(x) WowLogger::Error(WowLogger::filename(__FILE__), __LINE__, x);
+#else
+#define LogInfo(x) 
+#define LogWarn(x)
+#define LogError(x)
+#endif

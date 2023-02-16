@@ -101,7 +101,7 @@ inline bool WowCacheManager::saveToCache( std::string path, const std::string& b
     LogInfo( "CacheManager cached bytes=" + std::to_string( buf.size() ) + " for file=" + path );
     return true;
   }
-  LogWarn( "CacheManager failed to cache bytes=" + std::to_string( buf.size() ) + ". File=" + path + " won't be opened." );
+  LogWarn( "CacheManager failed to cache bytes=" + std::to_string( buf.size() ) + ". File=" + path + " won't be opened. errno=" + std::to_string(errno) );
   return false;
 }
 

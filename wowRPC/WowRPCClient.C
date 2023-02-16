@@ -2,7 +2,7 @@
 #include <iostream>
 #include <sys/stat.h>
 #include <dirent.h>
-
+#include "WowLogger.H"
 #include <fstream>
 
 
@@ -195,6 +195,7 @@ RPCResponse WowRPCClient::Create(const std::string& file_name, mode_t mode, int 
 
 RPCResponse WowRPCClient::Writeback( const std::string& path, const std::string& buf )
 {
+  LogError("Writing back: " + path + " : bytes=" + std::to_string(buf.size()));
   wowfs::StreamWriteRequest request;
   wowfs::StreamWriteResponse response;
   grpc::ClientContext context;

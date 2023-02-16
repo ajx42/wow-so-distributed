@@ -235,6 +235,7 @@ grpc::Status WowFSServiceImpl::Writeback(
   int numBytesWritten = 0;
   int outputFd = -1;
   wowfs::StreamWriteRequest req;
+  std::string path = "";
   while ( reader->Read( &req ) ) {
     if ( outputFd == -1 ) {
       // there may be a case when a file is deleted on the server, while another user
@@ -246,6 +247,7 @@ grpc::Status WowFSServiceImpl::Writeback(
         response->set_server_errno( errno );
         return grpc::Status::OK;
       }
+      path = req.path();
       std::cerr << "file opened for writing: " << this->basedir_ + req.path() << std::endl;
     }
     auto res = pwrite( outputFd, req.buf().data(), req.size(), req.offset() );
@@ -261,7 +263,7 @@ grpc::Status WowFSServiceImpl::Writeback(
     fsync( outputFd );
     close( outputFd );
   }
-  std::cerr << "writes completed, # bytes written: " << numBytesWritten << std::endl;
+  std::cerr << "XYZ: writes completed, path=" << path << " bytes=" << numBytesWritten << std::endl;
   response->set_ret( numBytesWritten );
   response->set_server_errno( 0 );
   return grpc::Status::OK;

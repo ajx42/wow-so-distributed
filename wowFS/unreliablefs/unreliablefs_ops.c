@@ -119,6 +119,56 @@ int unreliable_lstat(const char *path, struct stat *buf)
     return 0;
 }
 
+int unreliable_getattr_local(const char *path, struct stat *buf)
+{
+    int ret = error_inject(path, OP_GETATTR);
+    if (ret == -ERRNO_NOOP) {
+        return 0;
+    } else if (ret) {
+        return ret;
+    }
+
+    memset(buf, 0, sizeof(struct stat));
+    if (lstat(path, buf) == -1) {
+        return -errno;
+    }
+
+    return 0;
+}
+
+//TODO: Could also return the remote stat from this function if we are going to ping it anyways later
+ bool should_fetch(std::string path)
+ {
+     struct stat remote_stat;
+     struct stat local_stat;
+
+     char converted_path[5000];
+     strcpy(converted_path, path.c_str());
+     convert_path(converted_path);
+
+     //Local stat failed, should check remote
+     int local_ret = stat(path.c_str(), &local_stat);
+     if(local_ret < 0)
+     {
+         return true;
+     }
+
+     //TODO: Define behavior if stat fails on server
+     RPCResponse response = WowManager::Instance().client.DownloadStat(std::string(converted_path), &remote_stat);
+     if(response.ret_ == -1)
+     {
+         LogWarn("should_fetch: errno=" + std::to_string(response.server_errno_));
+         return true;
+     }
+
+     size_t local_value = (size_t)(local_stat.st_mtimespec.tv_sec * 1000 + local_stat.st_mtimespec.tv_nsec / 1000000);
+     size_t remote_value= (size_t)(remote_stat.st_mtimespec.tv_sec * 1000 + remote_stat.st_mtimespec.tv_nsec / 1000000);
+
+     //If local is older, we should fetch from remote
+     return local_value < remote_value;
+
+ }
+
 int unreliable_getattr(const char *path, struct stat *buf)
 {
     LogInfo("getattr: " + std::string(path));
@@ -128,6 +178,14 @@ int unreliable_getattr(const char *path, struct stat *buf)
         return 0;
     } else if (ret) {
         return ret;
+    }
+    if ( ! should_fetch( path ) ) {
+//    if ( WowManager::Instance().cmgr.isFileOpen( path ) ) {
+      return unreliable_getattr_local( path, buf );
+    } else {
+      if ( WowManager::Instance().cmgr.isFileOpen( path ) ) {
+        LogError(" should_fetch is truew but file is also open" );
+      }
     }
     
     char converted_path[5000];
@@ -424,6 +482,27 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
         return ret;
     }
 
+    if ( ! should_fetch( path ) ) {
+//    if ( WowManager::Instance().cmgr.isFileOpen( path ) ) {
+      ret = open(path, fi->flags);
+      if ( ret == -1 ) {
+        // and now we are inconsistent with the server, but this is largely benign
+        // at this point there is a file on the server, but not on the client
+        return -errno;     
+      }
+    
+      // tell cache manager about this file 
+      WowManager::Instance().cmgr.registerFileOpen( ret, path );
+
+      fi->fh = ret;
+      return 0;
+    } else {
+      if ( WowManager::Instance().cmgr.isFileOpen( path ) ) {
+        LogError(" should_fetch is truew but file is also open xx" );
+      }
+    }
+
+
     char converted_path[5000];
     strcpy(converted_path, path);
     convert_path(converted_path);
@@ -449,7 +528,8 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
       // CacheManager will ensure that directory tree path to saved file is built.
       if ( ! WowManager::Instance().cmgr.saveToCache(path, readBuf) ) {
         // failed to save to cache
-        return -1;
+        // @FIXME: still fine, open it anyway
+        // return -1;
       }
     } else {
       // there is no file on the server
@@ -462,6 +542,7 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
         return -response.server_errno_;
       }
     }
+
 
     ret = open(path, fi->flags);
     if ( ret == -1 ) {
