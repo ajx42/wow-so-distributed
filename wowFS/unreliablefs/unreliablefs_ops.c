@@ -742,16 +742,33 @@ int unreliable_getxattr(const char *path, const char *name,
 
     std::string converted_path = WowManager::Instance().removeMountPrefix(path);
 
-    //Send request to server for file stat info.
-    RPCResponse response = WowManager::Instance().client.GetXAttr(
-        converted_path, std::string(name), value, size);
-
-    //Verify response 
-    if(response.ret_ == -1)
+    if(should_fetch(path))
     {
-        LogWarn("getxattr failed: errno=" + std::to_string(response.server_errno_));
-        return -response.server_errno_;
+        //Send request to server for file stat info.
+        RPCResponse response = WowManager::Instance().client.GetXAttr(
+            converted_path, std::string(name), value, size);
+
+        //Verify response 
+        if(response.ret_ == -1)
+        {
+            LogWarn("getxattr failed: errno=" + std::to_string(response.server_errno_));
+            return -response.server_errno_;
+        }
     }
+    else
+    {
+        #ifdef __APPLE__
+            ret = getxattr(path, name, value, size, 0, XATTR_NOFOLLOW);
+        #else
+            ret = getxattr(path, name, value, size);
+        #endif /* __APPLE__ */
+            if(ret < 0)
+            {
+                LogWarn("getxattr local failed: errno=" + std::to_string(errno));
+                return -errno;
+            }
+    }
+
     
     return 0;
 }
