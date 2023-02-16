@@ -97,6 +97,39 @@ int unreliable_lstat(const char *path, struct stat *buf)
     return 0;
 }
 
+//TODO: Could also return the remote stat from this function if we are going to ping it anyways later
+bool should_fetch(std::string path)
+{
+    struct stat remote_stat;
+    struct stat local_stat;
+
+    char converted_path[5000];
+    strcpy(converted_path, path.c_str());
+    convert_path(converted_path);
+
+    //Local stat failed, should check remote
+    int local_ret = stat(path.c_str(), &local_stat);
+    if(local_ret < 0)
+    {
+        return true;
+    }
+
+    //TODO: Define behavior if stat fails on server
+    RPCResponse response = WowManager::Instance().client.DownloadStat(std::string(converted_path), &remote_stat);
+    if(response.ret_ == -1)
+    {
+        LogWarn("should_fetch: errno=" + std::to_string(response.server_errno_));
+        return false;
+    }
+
+    size_t local_value = (size_t)(local_stat.st_mtim.tv_sec * 1000 + local_stat.st_mtim.tv_nsec / 1000000);
+    size_t remote_value= (size_t)(remote_stat.st_mtim.tv_sec * 1000 + remote_stat.st_mtim.tv_nsec / 1000000);
+
+    //If local is older, we should fetch from remote
+    return local_value < remote_value;
+
+}
+
 int unreliable_getattr(const char *path, struct stat *buf)
 {
     LogInfo("getattr: " + std::string(path));
