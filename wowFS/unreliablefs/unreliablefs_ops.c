@@ -297,13 +297,9 @@ int unreliable_rename(const char *oldpath, const char *newpath)
     }
 
     // rename at server
-    char converted_oldpath[5000];
-    strcpy(converted_oldpath, oldpath);
-    convert_path(converted_oldpath);
+    std::string converted_oldpath = convert_path(oldpath);
 
-    char converted_newpath[5000];
-    strcpy(converted_newpath, newpath);
-    convert_path(converted_newpath);
+    std::string converted_newpath = convert_path(newpath);
 
     RPCResponse response = WowManager::Instance().client.Rename(
         std::string(converted_oldpath), std::string(converted_newpath));
