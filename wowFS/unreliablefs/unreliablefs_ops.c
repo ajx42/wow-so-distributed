@@ -103,9 +103,7 @@ bool should_fetch(std::string path)
     struct stat remote_stat;
     struct stat local_stat;
 
-    char converted_path[5000];
-    strcpy(converted_path, path.c_str());
-    convert_path(converted_path);
+    std::string converted_path = WowManager::Instance().removeMountPrefix(path);
 
     //Local stat failed, should check remote
     int local_ret = stat(path.c_str(), &local_stat);
