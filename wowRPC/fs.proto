@@ -17,6 +17,8 @@ service WowFS {
     rpc ReadDir(StreamReadRequest) returns (stream StreamReadResponse){}
     rpc Unlink(UnlinkRequest) returns (UnlinkResponse){}
     rpc Rename(RenameRequest) returns (RenameResponse){}
+    rpc Link(LinkRequest) returns (LinkResponse){}
+    rpc Symlink(SymlinkRequest) returns (SymlinkResponse){}
 }
 
 message Ack {
@@ -131,6 +133,26 @@ message RenameRequest{
 }
 
 message RenameResponse{
+    int32 ret = 1;
+    int32 server_errno = 2;
+}
+
+message LinkRequest{
+    string old_path = 1;
+    string new_path = 2;
+}
+
+message LinkResponse{
+    int32 ret = 1;
+    int32 server_errno = 2;
+}
+
+message SymlinkRequest{
+    string target = 1;
+    string link_path = 2;
+}
+
+message SymlinkResponse{
     int32 ret = 1;
     int32 server_errno = 2;
 }

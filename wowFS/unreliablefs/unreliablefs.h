@@ -43,6 +43,8 @@ private:
 inline std::string WowManager::removeMountPrefix(std::string file_path)
 {
     const std::string prefix = "/tmp/wowfs_local/";
+    if(file_path.find(prefix) == std::string::npos)
+        return file_path;
     return file_path.substr(prefix.length());
 }
 

@@ -67,6 +67,10 @@ public:
                       wowfs::UnlinkResponse*);
   grpc::Status Rename(grpc::ServerContext*, const wowfs::RenameRequest*, 
                       wowfs::RenameResponse*);
+  grpc::Status Link(grpc::ServerContext*, const wowfs::LinkRequest*, 
+                    wowfs::LinkResponse*);
+  grpc::Status Symlink(grpc::ServerContext*, const wowfs::SymlinkRequest*, 
+                       wowfs::SymlinkResponse*);
 };
 
 grpc::Status WowFSServiceImpl::TestCall( 
@@ -322,6 +326,30 @@ grpc::Status WowFSServiceImpl::Rename(grpc::ServerContext* context, const wowfs:
     int ret = rename(
         (this->basedir_ + request->old_path()).c_str(), 
         (this->basedir_ + request->new_path()).c_str());
+    response->set_ret(ret);
+    response->set_server_errno(errno);
+
+    return grpc::Status::OK;
+}
+
+grpc::Status WowFSServiceImpl::Link(grpc::ServerContext* context, const wowfs::LinkRequest* request,
+                      wowfs::LinkResponse* response)
+{
+    int ret = link(
+        (this->basedir_ + request->old_path()).c_str(),
+        (this->basedir_ + request->new_path()).c_str());
+    response->set_ret(ret);
+    response->set_server_errno(errno);
+
+    return grpc::Status::OK;
+}
+
+grpc::Status WowFSServiceImpl::Symlink(grpc::ServerContext* context, const wowfs::SymlinkRequest* request,
+                      wowfs::SymlinkResponse* response)
+{
+    int ret = symlink(
+        request->target().c_str(),
+        (this->basedir_ + request->link_path()).c_str());
     response->set_ret(ret);
     response->set_server_errno(errno);
 

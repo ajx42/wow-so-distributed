@@ -312,6 +312,12 @@ int unreliable_symlink(const char *target, const char *linkpath)
     } else if (ret) {
         return ret;
     }
+    std::string converted_target = WowManager::Instance().removeMountPrefix(target);
+
+    std::string converted_linkpath = WowManager::Instance().removeMountPrefix(linkpath);
+
+    RPCResponse response = WowManager::Instance().client.Symlink(
+        converted_target, converted_linkpath);
 
     ret = symlink(target, linkpath);
     if (ret == -1) {
@@ -362,6 +368,19 @@ int unreliable_link(const char *oldpath, const char *newpath)
         return ret;
     }
 
+    std::string converted_oldpath = WowManager::Instance().removeMountPrefix(oldpath);
+
+    std::string converted_newpath = WowManager::Instance().removeMountPrefix(newpath);
+
+    RPCResponse response = WowManager::Instance().client.Link(
+        converted_oldpath, converted_newpath);
+
+    if (response.ret_ == -1) {
+      LogWarn("link: failed errno=" + std::to_string(response.server_errno_));  
+      return -response.server_errno_;
+    }
+
+    // link locally
     ret = link(oldpath, newpath);
     if (ret < 0) {
         return -errno;
