@@ -31,11 +31,20 @@ public:
   
   WowRPCClient client;
   WowCacheManager cmgr;
+  std::string removeMountPrefix(std::string file_path);
+
 private:
   // singleton
   WowManager() : client(grpc::CreateChannel( 
     "localhost:50051", grpc::InsecureChannelCredentials() )) {}
+
 };
+
+inline std::string WowManager::removeMountPrefix(std::string file_path)
+{
+    const std::string prefix = "/tmp/wowfs_local/";
+    return file_path.substr(prefix.length());
+}
 
 #endif /* UNRELIABLEFS_HH */
 
