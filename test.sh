@@ -1,5 +1,8 @@
 #!/bin/bash
 
+./cleanup.sh
+rm /tmp/logs.unreliable.txt
+
 tmux new-session -d -s my_session
 tmux split-window -h
 

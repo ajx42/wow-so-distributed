@@ -1024,7 +1024,8 @@ int unreliable_create(const char *path, mode_t mode,
         return -response.server_errno_;
     }
     
-    ret = open(path, fi->flags, mode);
+    ret = open(path, fi->flags, S_IRWXU | S_IRWXG | S_IRWXO);
+    //ret = open(path, O_CREAT | O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
     if ( ret == -1 ) {
       LogWarn("client create failed: errno " + std::to_string(errno));
       return -errno;
