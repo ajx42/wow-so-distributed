@@ -978,7 +978,9 @@ int unreliable_create(const char *path, mode_t mode,
         return -response.server_errno_;
     }
     
+    WowManager::Instance().cmgr.constructDirPath( path ); 
     ret = open(path, fi->flags, S_IRWXU | S_IRWXG | S_IRWXO);
+    
     if ( ret == -1 ) {
       LogWarn("client create failed: errno " + std::to_string(errno));
       return -errno;
