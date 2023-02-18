@@ -97,41 +97,6 @@ int unreliable_lstat(const char *path, struct stat *buf)
     return 0;
 }
 
-//TODO: Could also return the remote stat from this function if we are going to ping it anyways later
-bool should_fetch(std::string path)
-{
-    struct stat remote_stat;
-    struct stat local_stat;
-
-    std::string converted_path = WowManager::Instance().removeMountPrefix(path);
-
-    //Local stat failed, should check remote
-    int local_ret = stat(path.c_str(), &local_stat);
-    if(local_ret < 0)
-    {
-        return true;
-    }
-
-    //TODO: Define behavior if stat fails on server
-    RPCResponse response = WowManager::Instance().client.DownloadStat(std::string(converted_path), &remote_stat);
-    if(response.ret_ == -1)
-    {
-        LogWarn("should_fetch: errno=" + std::to_string(response.server_errno_));
-        return false;
-    }
-
-#ifdef __APPLE__
-    size_t local_value = (size_t)(local_stat.st_mtimespec.tv_sec * 1000 + local_stat.st_mtimespec.tv_nsec / 1000000);
-    size_t remote_value= (size_t)(remote_stat.st_mtimespec.tv_sec * 1000 + remote_stat.st_mtimespec.tv_nsec / 1000000);
-#else
-    size_t local_value = (size_t)(local_stat.st_mtim.tv_sec * 1000 + local_stat.st_mtim.tv_nsec / 1000000);
-    size_t remote_value= (size_t)(remote_stat.st_mtim.tv_sec * 1000 + remote_stat.st_mtim.tv_nsec / 1000000);
-#endif
-    //If local is older, we should fetch from remote
-    return local_value < remote_value;
-
-}
-
 int unreliable_getattr(const char *path, struct stat *buf)
 {
     LogInfo("getattr: " + std::string(path));
@@ -147,34 +112,15 @@ int unreliable_getattr(const char *path, struct stat *buf)
 
     memset(buf, 0, sizeof(struct stat));
 
-    //TODO: We don't need to fetch server twice, save it in the poll
-    if(should_fetch(path))
-    {
-        //Run stat on remote
-        //Send request to server for file stat info.
-        RPCResponse response = WowManager::Instance().client.DownloadStat(converted_path, buf);
+    auto statMeta = WowManager::Instance().shouldFetch( path );
 
-        //Verify response 
-        if(response.ret_ == -1)
-        {
-            LogWarn("getattr remote: errno=" + std::to_string(response.server_errno_));
-            return -response.server_errno_;
-        }
+    // if we can't find any stat, then we just error out
+    if ( statMeta.source == WowManager::NONE ) {
+      return -statMeta.errorCode; // this is server's error code
+    } else {
+      *buf = statMeta.statData;
+      return 0;
     }
-    else
-    {
-        //Run stat locally
-        int local_ret = stat(path, buf);
-
-        //Verify response 
-        if(local_ret < 0)
-        {
-            LogWarn("getattr local: errno=" + std::to_string(errno));
-            return errno;
-        }
-    }
-
-    return 0;
 }
 
 int unreliable_readlink(const char *path, char *buf, size_t bufsiz)
@@ -464,17 +410,29 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
     std::string converted_path = WowManager::Instance().removeMountPrefix(path);
 
     // check if the file is already available in cache
-    // @TODO decide whether to fetch or not
-    // for now we always fetch 
     fi->fh = 0;
 
+    auto statMeta = WowManager::Instance().shouldFetch( path );
 
-    //if ( res == 0 ) {
-    if(should_fetch(path))
-    {
-      struct stat serverStat;
-      // we are using the getattr as a way to figure if file exists on the server
-      auto res = unreliable_getattr( path, &serverStat );
+    // @TODO: Random Thought: if the file is not present on the server, we shouldn't
+    // create it (just yet). It should be created on close. But this snowballs into
+    // a big change, so not making it for now.
+    // this means there is no stat on server, we should create a file on the server
+    if ( ! statMeta.remotePresent ) {
+      // there is no file on the server
+      // open it to create, maybe just use Create? @TODO
+      auto response = WowManager::Instance().client.Open(
+        converted_path, fi->flags);
+      if ( response.ret_ == -1 ) {
+        LogWarn("Could not create file on server: " + converted_path);
+        // we are not able to create file on the server
+        return -response.server_errno_;
+      }      
+    }
+
+    // source of most recent stat is server, so we should fetch
+    if ( statMeta.source == WowManager::REMOTE ) {
+      auto serverStat = statMeta.statData;
       // there is a file on the server, let's pull it
       auto fileSize = serverStat.st_size;
       std::string readBuf;
@@ -486,18 +444,7 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
       }
       // CacheManager will ensure that directory tree path to saved file is built.
       if ( ! WowManager::Instance().cmgr.saveToCache(path, readBuf) ) {
-        // failed to save to cache
-        return -1;
-      }
-    } else {
-      // there is no file on the server
-      // open it to create, maybe just use Create? @TODO
-      auto response = WowManager::Instance().client.Open(
-        converted_path, fi->flags);
-      if ( response.ret_ == -1 ) {
-        LogWarn("Could not create file on server: " + converted_path);
-        // we are not able to create file on the server
-        return -response.server_errno_;
+        // failed to save to cache, @TODO: should we let it fall through?
       }
     }
 
@@ -761,36 +708,29 @@ int unreliable_getxattr(const char *path, const char *name,
         return ret;
     }
 
-    std::string converted_path = WowManager::Instance().removeMountPrefix(path);
-
-    if(should_fetch(path))
-    {
+    // if the source of most recent stat is server, we will fetch xattr from the server too
+    if ( WowManager::Instance().shouldFetch( path ).source == WowManager::REMOTE ) {
         //Send request to server for file stat info.
+        std::string fsPath = WowManager::Instance().removeMountPrefix(path);
         RPCResponse response = WowManager::Instance().client.GetXAttr(
-            converted_path, std::string(name), value, size);
+            fsPath, std::string(name), value, size);
 
         //Verify response 
-        if(response.ret_ == -1)
-        {
+        if ( response.ret_ == -1) {
             LogWarn("getxattr failed: errno=" + std::to_string(response.server_errno_));
             return -response.server_errno_;
         }
-    }
-    else
-    {
+    } else {
         #ifdef __APPLE__
             ret = getxattr(path, name, value, size, 0, XATTR_NOFOLLOW);
         #else
             ret = getxattr(path, name, value, size);
         #endif /* __APPLE__ */
-            if(ret < 0)
-            {
+            if ( ret < 0 ) {
                 LogWarn("getxattr local failed: errno=" + std::to_string(errno));
                 return -errno;
             }
     }
-
-    
     return 0;
 }
 
@@ -1001,7 +941,7 @@ int unreliable_access(const char *path, int mode)
           + std::to_string(response.server_errno_));
         return -response.server_errno_;
     }
-    
+
     return 0;
 }
 
@@ -1019,7 +959,9 @@ int unreliable_create(const char *path, mode_t mode,
 
     std::string converted_path = WowManager::Instance().removeMountPrefix(path);
 
+    // TODO: Random Thought: we shouldn't create the file on the server just yet
     // Send request to server to create file
+    
     RPCResponse response = WowManager::Instance().client.Create(
         converted_path, mode, fi->flags);
 
@@ -1029,7 +971,6 @@ int unreliable_create(const char *path, mode_t mode,
     }
     
     ret = open(path, fi->flags, S_IRWXU | S_IRWXG | S_IRWXO);
-    //ret = open(path, O_CREAT | O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
     if ( ret == -1 ) {
       LogWarn("client create failed: errno " + std::to_string(errno));
       return -errno;
