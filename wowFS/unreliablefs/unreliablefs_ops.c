@@ -120,9 +120,13 @@ bool should_fetch(std::string path)
         return false;
     }
 
+#ifdef __APPLE__
+    size_t local_value = (size_t)(local_stat.st_mtimespec.tv_sec * 1000 + local_stat.st_mtimespec.tv_nsec / 1000000);
+    size_t remote_value= (size_t)(remote_stat.st_mtimespec.tv_sec * 1000 + remote_stat.st_mtimespec.tv_nsec / 1000000);
+#else
     size_t local_value = (size_t)(local_stat.st_mtim.tv_sec * 1000 + local_stat.st_mtim.tv_nsec / 1000000);
     size_t remote_value= (size_t)(remote_stat.st_mtim.tv_sec * 1000 + remote_stat.st_mtim.tv_nsec / 1000000);
-
+#endif
     //If local is older, we should fetch from remote
     return local_value < remote_value;
 
