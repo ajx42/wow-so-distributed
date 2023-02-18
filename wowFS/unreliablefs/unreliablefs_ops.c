@@ -455,7 +455,8 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
         // failed to save to cache, @TODO: should we let it fall through?
       }
     }
-
+  
+    WowManager::Instance().cmgr.constructDirPath( path );
     ret = open(path, fi->flags);
     if ( ret == -1 ) {
       // and now we are inconsistent with the server, but this is largely benign
