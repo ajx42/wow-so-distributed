@@ -28,10 +28,23 @@ public:
     static WowManager mgr;
     return mgr;
   }
+
+  enum StatSelect {
+    NONE, LOCAL, REMOTE
+  };
+
+  struct StatInfo {
+    struct stat statData;
+    bool remotePresent = false;
+    StatSelect source = NONE;
+    int32_t errorCode = 0;
+  };
   
   WowRPCClient client;
   WowCacheManager cmgr;
-  std::string removeMountPrefix(std::string file_path);
+  
+  std::string removeMountPrefix(std::string file_path) ;
+  StatInfo shouldFetch( std::string path );
 
 private:
   // singleton
@@ -48,5 +61,57 @@ inline std::string WowManager::removeMountPrefix(std::string file_path)
     return file_path.substr(prefix.length());
 }
 
+inline WowManager::StatInfo WowManager::shouldFetch( std::string path )
+{
+  struct stat remoteStat, localStat;
+  auto fsPath = removeMountPrefix( path );
+
+  // fetch stat from server (remote), and store any errors that we see
+  auto remoteResponse = client.DownloadStat( fsPath, &remoteStat );
+  auto remoteSuccess = remoteResponse.ret_ != -1;
+  auto remoteError = remoteResponse.server_errno_;
+
+  // get the local stat and record any errors
+  auto localSuccess = stat( path.c_str(), &localStat ) >= 0;
+  auto localError = localSuccess ? 0 : errno;
+
+  if ( ! localSuccess && ! remoteSuccess ) {
+    // this looks e a new file, no need to fetch, we should indicate that
+    // remote is not present, so that we can create file on the server on
+    // the receiving end
+    return StatInfo { .statData = {}, .remotePresent = false, .source = NONE,
+      .errorCode = remoteError }; 
+  } else if ( localSuccess && ! remoteSuccess ) {
+    return StatInfo { .statData = localStat,  .remotePresent = false,
+      .source = LOCAL, .errorCode = localError };
+  } else if ( ! localSuccess && remoteSuccess ) {
+    // file is not present locally, but is on remote
+    return StatInfo { .statData = remoteStat, .remotePresent = true,
+      .source = REMOTE, .errorCode = remoteError };
+  }
+
+  // at this point, we know that both stats are available, so we need to compare
+#ifdef __APPLE__
+  auto localModTime  = (int64_t)localStat.st_mtimespec.tv_sec * 1e9
+                     + localStat.st_mtimespec.tv_nsec;
+  auto remoteModTime = (int64_t)remoteStat.st_mtimespec.tv_sec * 1e9
+                     + remoteStat.st_mtimespec.tv_nsec;
+#else
+  auto localModTime  = (int64_t)localStat.st_mtim.tv_sec * 1e9
+                     + localStat.st_mtim.tv_nsec;
+  auto remoteModTime = (int64_t)remoteStat.st_mtim.tv_sec * 1e9
+                     + remoteStat.st_mtim.tv_nsec;
+#endif
+
+  auto localWins = localModTime >= remoteModTime;
+
+  return StatInfo {
+    .statData = (localWins ? localStat : remoteStat),
+    .remotePresent = true,
+    .source = (localWins ? LOCAL : REMOTE),
+    .errorCode = (localWins ? localError : remoteError)
+  };
+}
+     
 #endif /* UNRELIABLEFS_HH */
 
