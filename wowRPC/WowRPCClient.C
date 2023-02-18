@@ -321,3 +321,35 @@ RPCResponse WowRPCClient::Rename( const std::string& oldPath, const std::string&
   }
   return RPCResponse( response.ret(), response.server_errno() );
 }
+
+RPCResponse WowRPCClient::Link( const std::string& oldPath, const std::string& newPath ){
+  wowfs::LinkRequest request;
+  wowfs::LinkResponse response;
+  grpc::ClientContext context;
+
+  request.set_old_path( oldPath );
+  request.set_new_path( newPath );
+  
+  auto status = stub_->Link( &context, request, &response );
+
+  if ( !status.ok() ) {
+    return RPCResponse(-1, -1);
+  }
+  return RPCResponse( response.ret(), response.server_errno() );
+}
+
+RPCResponse WowRPCClient::Symlink( const std::string& target, const std::string& linkPath ){
+  wowfs::SymlinkRequest request;
+  wowfs::SymlinkResponse response;
+  grpc::ClientContext context;
+
+  request.set_target( target );
+  request.set_link_path( linkPath );
+  
+  auto status = stub_->Symlink( &context, request, &response );
+
+  if ( !status.ok() ) {
+    return RPCResponse(-1, -1);
+  }
+  return RPCResponse( response.ret(), response.server_errno() );
+}
