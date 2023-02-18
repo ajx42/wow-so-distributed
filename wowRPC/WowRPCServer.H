@@ -243,7 +243,7 @@ grpc::Status WowFSServiceImpl::Writeback(
     if ( outputFd == -1 ) {
       // there may be a case when a file is deleted on the server, while another user
       // writes back to it later, therefore we should create a file if it doesn't exist
-      outputFd = open( (this->basedir_ + req.path()).c_str(), O_WRONLY | O_CREAT, 0777 );
+      outputFd = open( (this->basedir_ + req.path()).c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0777 );
       if ( outputFd == -1 ) {
         // something went wrong
         response->set_ret( -1 );
