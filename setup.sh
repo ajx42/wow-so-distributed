@@ -1,9 +1,6 @@
 #!/bin/bash
 
 
-sudo ./cleanup.sh
-rm -rf /tmp/log.unreliable.txt
-
 #Make local and remote mirror directories
 mkdir /tmp/wowfs
 mkdir /tmp/wowfs_local

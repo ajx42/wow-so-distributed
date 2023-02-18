@@ -483,7 +483,7 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
       // CacheManager will ensure that directory tree path to saved file is built.
       if ( ! WowManager::Instance().cmgr.saveToCache(path, readBuf) ) {
         // failed to save to cache
-        // return -1;
+        return -1;
       }
     } else {
       // there is no file on the server
