@@ -22,7 +22,9 @@ public:
   std::string getFilePathFromFd( int32_t fd );
   void deleteFromCache( std::string path );
   void rename( std::string oldPath, std::string newPath );
+  bool constructDirPath( std::string path );
 private:
+
   std::mutex mapMutex_;
   // The need for this mapping: we need to map fd <> path to perform file
   // reads before closing. A file may be open in modes that don't allow
@@ -80,10 +82,10 @@ inline std::string WowCacheManager::getFilePathFromFd( int32_t fd ) {
   return fdToFilepath_[ fd ];
 }
 
-inline bool WowCacheManager::saveToCache( std::string path, const std::string& buf )
+inline bool WowCacheManager::constructDirPath( std::string path )
 {
   if ( path.empty() || path[0] != '/' ) {
-    return false; // something is very wrong, we only expect absolute paths
+    return false;
   }
   // we are assuming path is a file path, so should not end in '/'
   std::string dirTree;
@@ -93,6 +95,14 @@ inline bool WowCacheManager::saveToCache( std::string path, const std::string& b
     }
   }
   std::filesystem::create_directories(dirTree);
+  return true;
+}
+
+inline bool WowCacheManager::saveToCache( std::string path, const std::string& buf )
+{
+  if ( ! constructDirPath( path ) ) {
+    return false;
+  }
 
   FILE* fp = fopen( path.c_str(), "wb" );
   if ( fp != NULL ) {
@@ -101,6 +111,7 @@ inline bool WowCacheManager::saveToCache( std::string path, const std::string& b
     LogInfo( "CacheManager cached bytes=" + std::to_string( buf.size() ) + " for file=" + path );
     return true;
   }
+
   LogWarn( "CacheManager failed to cache bytes=" + std::to_string( buf.size() ) + ". File=" + path + " won't be opened." );
   return false;
 }
