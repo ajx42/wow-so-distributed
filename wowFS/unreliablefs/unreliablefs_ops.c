@@ -268,6 +268,14 @@ int unreliable_symlink(const char *target, const char *linkpath)
 
     RPCResponse response = WowManager::Instance().client.Symlink(
         converted_target, converted_linkpath);
+    
+    if ( response.ret_ == -1 ) {
+      LogWarn("remote symlink failed for target=" + std::string(target) +  " linkpath=" + 
+              std::string(linkpath) + " errno=" + std::to_string(response.server_errno_) );
+      // We couldn't create a symlink on the server, but we are not going to crash just
+      // yet.
+    }
+
 
     ret = symlink(target, linkpath);
     if (ret == -1) {
