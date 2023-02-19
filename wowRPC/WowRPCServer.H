@@ -67,6 +67,10 @@ public:
                       wowfs::UnlinkResponse*);
   grpc::Status Rename(grpc::ServerContext*, const wowfs::RenameRequest*, 
                       wowfs::RenameResponse*);
+  grpc::Status Link(grpc::ServerContext*, const wowfs::LinkRequest*, 
+                    wowfs::LinkResponse*);
+  grpc::Status Symlink(grpc::ServerContext*, const wowfs::SymlinkRequest*, 
+                       wowfs::SymlinkResponse*);
 };
 
 grpc::Status WowFSServiceImpl::TestCall( 
@@ -239,7 +243,7 @@ grpc::Status WowFSServiceImpl::Writeback(
     if ( outputFd == -1 ) {
       // there may be a case when a file is deleted on the server, while another user
       // writes back to it later, therefore we should create a file if it doesn't exist
-      outputFd = open( (this->basedir_ + req.path()).c_str(), O_WRONLY | O_CREAT, 0777 );
+      outputFd = open( (this->basedir_ + req.path()).c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0777 );
       if ( outputFd == -1 ) {
         // something went wrong
         response->set_ret( -1 );
@@ -322,6 +326,30 @@ grpc::Status WowFSServiceImpl::Rename(grpc::ServerContext* context, const wowfs:
     int ret = rename(
         (this->basedir_ + request->old_path()).c_str(), 
         (this->basedir_ + request->new_path()).c_str());
+    response->set_ret(ret);
+    response->set_server_errno(errno);
+
+    return grpc::Status::OK;
+}
+
+grpc::Status WowFSServiceImpl::Link(grpc::ServerContext* context, const wowfs::LinkRequest* request,
+                      wowfs::LinkResponse* response)
+{
+    int ret = link(
+        (this->basedir_ + request->old_path()).c_str(),
+        (this->basedir_ + request->new_path()).c_str());
+    response->set_ret(ret);
+    response->set_server_errno(errno);
+
+    return grpc::Status::OK;
+}
+
+grpc::Status WowFSServiceImpl::Symlink(grpc::ServerContext* context, const wowfs::SymlinkRequest* request,
+                      wowfs::SymlinkResponse* response)
+{
+    int ret = symlink(
+        request->target().c_str(),
+        (this->basedir_ + request->link_path()).c_str());
     response->set_ret(ret);
     response->set_server_errno(errno);
 

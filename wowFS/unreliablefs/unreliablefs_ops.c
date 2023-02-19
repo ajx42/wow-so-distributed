@@ -78,28 +78,6 @@ const char *fuse_op_name[] = {
 
 extern int error_inject(const char* path, fuse_op operation);
 
-void old_convert_path(char * file_path)
-{
-    const char *local_prefix = "/tmp/wowfs_local/";
-    const char *remote_prefix = "/tmp/wowfs_remote/";
-
-    if (strncmp(file_path, local_prefix, strlen(local_prefix)) == 0) {
-        memmove(file_path + strlen(remote_prefix), file_path + strlen(local_prefix), strlen(file_path) - strlen(local_prefix) + 1);
-        memmove(file_path, remote_prefix, strlen(remote_prefix));
-    }
-}
-
-void convert_path(char * file_path)
-{
-    const char *local_prefix = "/tmp/wowfs_local/";
-    const char *remote_prefix = "";
-
-    if (strncmp(file_path, local_prefix, strlen(local_prefix)) == 0) {
-        memmove(file_path + strlen(remote_prefix), file_path + strlen(local_prefix), strlen(file_path) - strlen(local_prefix) + 1);
-        memmove(file_path, remote_prefix, strlen(remote_prefix));
-    }
-}
-
 int unreliable_lstat(const char *path, struct stat *buf)
 {
     LogInfo("lstat: " + std::string(path));
@@ -130,23 +108,19 @@ int unreliable_getattr(const char *path, struct stat *buf)
         return ret;
     }
     
-    char converted_path[5000];
-    strcpy(converted_path, path);
-    convert_path(converted_path);
+    std::string converted_path = WowManager::Instance().removeMountPrefix(path);
 
     memset(buf, 0, sizeof(struct stat));
-    
-    //Send request to server for file stat info.
-    RPCResponse response = WowManager::Instance().client.DownloadStat(std::string(converted_path), buf);
 
-    //Verify response 
-    if(response.ret_ == -1)
-    {
-        LogWarn("getattr: errno=" + std::to_string(response.server_errno_));
-        return -response.server_errno_;
+    auto statMeta = WowManager::Instance().shouldFetch( path );
+
+    // if we can't find any stat, then we just error out
+    if ( statMeta.source == WowManager::NONE ) {
+      return -statMeta.errorCode; // this is server's error code
+    } else {
+      *buf = statMeta.statData;
+      return 0;
     }
-
-    return 0;
 }
 
 int unreliable_readlink(const char *path, char *buf, size_t bufsiz)
@@ -199,13 +173,11 @@ int unreliable_mkdir(const char *path, mode_t mode)
         return ret;
     }
 
-    char converted_path[5000];
-    strcpy(converted_path, path);
-    convert_path(converted_path);
+    std::string converted_path = WowManager::Instance().removeMountPrefix(path);
 
     // Send request to server to create directory.
     RPCResponse response = WowManager::Instance().client.Mkdir(
-        std::string(converted_path), mode);
+        converted_path, mode);
 
     if (response.ret_ == -1) {
         LogWarn(std::string("server mkdir failed: errno=") + std::to_string(response.server_errno_));
@@ -234,11 +206,9 @@ int unreliable_unlink(const char *path)
     }
 
     // unlink at server
-    char converted_path[5000];
-    strcpy(converted_path, path);
-    convert_path(converted_path);
+    std::string converted_path = WowManager::Instance().removeMountPrefix(path);
 
-    RPCResponse response = WowManager::Instance().client.Unlink(std::string(converted_path));
+    RPCResponse response = WowManager::Instance().client.Unlink(converted_path);
 
     if (response.ret_ == -1) {
       LogWarn("server unlink: failed errno=" + std::to_string(response.server_errno_));
@@ -262,12 +232,10 @@ int unreliable_rmdir(const char *path)
         return ret;
     }
 
-    char converted_path[5000];
-    strcpy(converted_path, path);
-    convert_path(converted_path);
+    std::string converted_path = WowManager::Instance().removeMountPrefix(path);
 
     // Send request to server to remove directory.
-    RPCResponse response = WowManager::Instance().client.Rmdir(std::string(converted_path));
+    RPCResponse response = WowManager::Instance().client.Rmdir(converted_path);
 
     if (response.ret_ == -1) {
         LogWarn("server rmdir failed: errno=" + std::to_string(response.server_errno_));
@@ -294,6 +262,20 @@ int unreliable_symlink(const char *target, const char *linkpath)
     } else if (ret) {
         return ret;
     }
+    std::string converted_target = WowManager::Instance().removeMountPrefix(target);
+
+    std::string converted_linkpath = WowManager::Instance().removeMountPrefix(linkpath);
+
+    RPCResponse response = WowManager::Instance().client.Symlink(
+        converted_target, converted_linkpath);
+    
+    if ( response.ret_ == -1 ) {
+      LogWarn("remote symlink failed for target=" + std::string(target) +  " linkpath=" + 
+              std::string(linkpath) + " errno=" + std::to_string(response.server_errno_) );
+      // We couldn't create a symlink on the server, but we are not going to crash just
+      // yet.
+    }
+
 
     ret = symlink(target, linkpath);
     if (ret == -1) {
@@ -315,13 +297,9 @@ int unreliable_rename(const char *oldpath, const char *newpath)
     }
 
     // rename at server
-    char converted_oldpath[5000];
-    strcpy(converted_oldpath, oldpath);
-    convert_path(converted_oldpath);
+    std::string converted_oldpath = WowManager::Instance().removeMountPrefix(oldpath);
 
-    char converted_newpath[5000];
-    strcpy(converted_newpath, newpath);
-    convert_path(converted_newpath);
+    std::string converted_newpath = WowManager::Instance().removeMountPrefix(newpath);
 
     RPCResponse response = WowManager::Instance().client.Rename(
         std::string(converted_oldpath), std::string(converted_newpath));
@@ -348,6 +326,19 @@ int unreliable_link(const char *oldpath, const char *newpath)
         return ret;
     }
 
+    std::string converted_oldpath = WowManager::Instance().removeMountPrefix(oldpath);
+
+    std::string converted_newpath = WowManager::Instance().removeMountPrefix(newpath);
+
+    RPCResponse response = WowManager::Instance().client.Link(
+        converted_oldpath, converted_newpath);
+
+    if (response.ret_ == -1) {
+      LogWarn("link: failed errno=" + std::to_string(response.server_errno_));  
+      return -response.server_errno_;
+    }
+
+    // link locally
     ret = link(oldpath, newpath);
     if (ret < 0) {
         return -errno;
@@ -424,42 +415,44 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
         return ret;
     }
 
-    char converted_path[5000];
-    strcpy(converted_path, path);
-    convert_path(converted_path);
+    std::string converted_path = WowManager::Instance().removeMountPrefix(path);
 
     // check if the file is already available in cache
-    // @TODO decide whether to fetch or not
-    // for now we always fetch 
     fi->fh = 0;
 
-    struct stat serverStat;
-    // we are using the getattr as a way to figure if file exists on the server
-    auto res = unreliable_getattr( path, &serverStat );
-    if ( res == 0 ) {
+    auto statMeta = WowManager::Instance().shouldFetch( path );
+
+    // @TODO: Random Thought: if the file is not present on the server, we shouldn't
+    // create it (just yet). It should be created on close. But this snowballs into
+    // a big change, so not making it for now.
+    // this means there is no stat on server, we should create a file on the server
+    if ( ! statMeta.remotePresent ) {
+      // there is no file on the server
+      // open it to create, maybe just use Create? @TODO
+      auto response = WowManager::Instance().client.Open(
+        converted_path, fi->flags);
+      if ( response.ret_ == -1 ) {
+        LogWarn("Could not create file on server: " + converted_path);
+        // we are not able to create file on the server
+        return -response.server_errno_;
+      }      
+    }
+
+    // source of most recent stat is server, so we should fetch
+    if ( statMeta.source == WowManager::REMOTE ) {
+      auto serverStat = statMeta.statData;
       // there is a file on the server, let's pull it
       auto fileSize = serverStat.st_size;
       std::string readBuf;
       auto response = WowManager::Instance().client.DownloadFile(
-        std::string(converted_path), readBuf, fileSize);
+        converted_path, readBuf, fileSize);
       if ( response.ret_ == -1 ) {
         // there is a file on the server, but we are not able to read it!
         return -response.server_errno_;
       }
       // CacheManager will ensure that directory tree path to saved file is built.
       if ( ! WowManager::Instance().cmgr.saveToCache(path, readBuf) ) {
-        // failed to save to cache
-        return -1;
-      }
-    } else {
-      // there is no file on the server
-      // open it to create, maybe just use Create? @TODO
-      auto response = WowManager::Instance().client.Open(
-        std::string(converted_path), fi->flags);
-      if ( response.ret_ == -1 ) {
-        LogWarn("Could not create file on server: " + std::string( converted_path ) );
-        // we are not able to create file on the server
-        return -response.server_errno_;
+        // failed to save to cache, @TODO: should we let it fall through?
       }
     }
 
@@ -616,10 +609,7 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
       return 0;
     }
 
-    // @TODO: user a better path conversion mechanism
-    char converted_path[5000];
-    strcpy(converted_path, path);
-    convert_path(converted_path);
+    std::string converted_path = WowManager::Instance().removeMountPrefix(path);
 
     // read local buffer
     std::string readBuf;
@@ -726,21 +716,29 @@ int unreliable_getxattr(const char *path, const char *name,
         return ret;
     }
 
-    char converted_path[5000];
-    strcpy(converted_path, path);
-    convert_path(converted_path);
+    // if the source of most recent stat is server, we will fetch xattr from the server too
+    if ( WowManager::Instance().shouldFetch( path ).source == WowManager::REMOTE ) {
+        //Send request to server for file stat info.
+        std::string fsPath = WowManager::Instance().removeMountPrefix(path);
+        RPCResponse response = WowManager::Instance().client.GetXAttr(
+            fsPath, std::string(name), value, size);
 
-    //Send request to server for file stat info.
-    RPCResponse response = WowManager::Instance().client.GetXAttr(
-        std::string(converted_path), std::string(name), value, size);
-
-    //Verify response 
-    if(response.ret_ == -1)
-    {
-        LogWarn("getxattr failed: errno=" + std::to_string(response.server_errno_));
-        return -response.server_errno_;
+        //Verify response 
+        if ( response.ret_ == -1) {
+            LogWarn("getxattr failed: errno=" + std::to_string(response.server_errno_));
+            return -response.server_errno_;
+        }
+    } else {
+        #ifdef __APPLE__
+            ret = getxattr(path, name, value, size, 0, XATTR_NOFOLLOW);
+        #else
+            ret = getxattr(path, name, value, size);
+        #endif /* __APPLE__ */
+            if ( ret < 0 ) {
+                LogWarn("getxattr local failed: errno=" + std::to_string(errno));
+                return -errno;
+            }
     }
-    
     return 0;
 }
 
@@ -804,13 +802,10 @@ int unreliable_opendir(const char *path, struct fuse_file_info *fi)
         return ret;
     }
 
-    char converted_path[5000];
-    strcpy(converted_path, path);
-    convert_path(converted_path);
-
+    std::string converted_path = WowManager::Instance().removeMountPrefix(path);
 
     std::string dir_buf;
-    auto response = WowManager::Instance().client.DownloadDir(std::string(converted_path), dir_buf);
+    auto response = WowManager::Instance().client.DownloadDir(converted_path, dir_buf);
     if (response.ret_ < 0)
     {
         return -errno;
@@ -838,12 +833,10 @@ int unreliable_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     }
 
     //DIR *dp = opendir(path);
-    char converted_path[5000];
-    strcpy(converted_path, path);
-    convert_path(converted_path);
+    std::string converted_path = WowManager::Instance().removeMountPrefix(path);
     
     std::string dir_buf;
-    auto response = WowManager::Instance().client.DownloadDir(std::string(converted_path), dir_buf);
+    auto response = WowManager::Instance().client.DownloadDir(converted_path, dir_buf);
     if (response.ret_ < 0)
     {
         return -errno;
@@ -948,17 +941,15 @@ int unreliable_access(const char *path, int mode)
         return ret;
     }
 
-    char converted_path[5000];
-    strcpy(converted_path, path);
-    convert_path(converted_path);
+    std::string converted_path = WowManager::Instance().removeMountPrefix(path);
 
-    RPCResponse response = WowManager::Instance().client.Access(std::string(converted_path), mode);
+    RPCResponse response = WowManager::Instance().client.Access(converted_path, mode);
     if (response.ret_ == -1) {
         LogWarn("access: failed for " + std::string(path) + " errno="
           + std::to_string(response.server_errno_));
         return -response.server_errno_;
     }
-    
+
     return 0;
 }
 
@@ -974,20 +965,20 @@ int unreliable_create(const char *path, mode_t mode,
         return ret;
     }
 
-    char converted_path[5000];
-    strcpy(converted_path, path);
-    convert_path(converted_path);
+    std::string converted_path = WowManager::Instance().removeMountPrefix(path);
 
+    // TODO: Random Thought: we shouldn't create the file on the server just yet
     // Send request to server to create file
+    
     RPCResponse response = WowManager::Instance().client.Create(
-        std::string(converted_path), mode, fi->flags);
+        converted_path, mode, fi->flags);
 
     if (response.ret_ == -1) {
         LogWarn("server create failed: errno=" + std::to_string(response.server_errno_));
         return -response.server_errno_;
     }
     
-    ret = open(path, fi->flags, mode);
+    ret = open(path, fi->flags, S_IRWXU | S_IRWXG | S_IRWXO);
     if ( ret == -1 ) {
       LogWarn("client create failed: errno " + std::to_string(errno));
       return -errno;

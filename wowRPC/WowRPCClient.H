@@ -36,6 +36,8 @@ public:
 
   RPCResponse Unlink( const std::string& path );
   RPCResponse Rename( const std::string& old_path, const std::string& new_path );
+  RPCResponse Link( const std::string& old_path, const std::string& new_path );
+  RPCResponse Symlink( const std::string& target, const std::string& link_path );
 private:
   std::unique_ptr<wowfs::WowFS::Stub> stub_;
 };

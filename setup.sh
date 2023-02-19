@@ -7,6 +7,11 @@ mkdir /tmp/wowfs_local
 mkdir /tmp/wowfs_remote
 mkdir /tmp/wowfs_remote/subdir
 
+chmod 777 /tmp/wowfs
+chmod 777 /tmp/wowfs_local
+chmod 777 /tmp/wowfs_remote
+chmod 777 /tmp/wowfs_remote/subdir
+
 #Write config file
 #cat << EOF > /tmp/wowfs_local/unreliablefs.conf
 #[errinj_noop]
