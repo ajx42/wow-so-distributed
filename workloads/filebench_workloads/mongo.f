@@ -24,7 +24,7 @@
 #
 # ident	"%Z%%M%	%I%	%E% SMI"
 
-set $dir=/tmp
+set $dir=/tmp/wowfs/filebench
 set $nfiles=10000
 set $filesize=16k
 set $dirwidth=200

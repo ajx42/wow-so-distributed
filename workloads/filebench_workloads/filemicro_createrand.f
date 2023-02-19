@@ -29,10 +29,10 @@
 # Does a fsync after 10 ($iters) appends.
 # Stops after 1GB ($bytes) has been appended/written.
 
-set $dir=/tmp
+set $dir=/tmp/wowfs/filebench
 set $bytes=1g
 set $iosize=1m
-set $iters=10
+set $iters=100
 set $nthreads=1
 set $sync=false
 

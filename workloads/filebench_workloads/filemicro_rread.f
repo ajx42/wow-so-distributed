@@ -27,12 +27,12 @@
 # Single threaded random reads (2KB I/Os) on a 1GB file.
 # Stops after 128MB ($bytes) has been read.
 
-set $dir=/tmp
+set $dir=/tmp/wowfs/filebench
 set $bytes=128m
 set $cached=false
 set $filesize=4g
 set $iosize=2k
-set $iters=1
+set $iters=1000
 set $nthreads=1
 
 define file name=bigfile1,path=$dir,size=$filesize,prealloc,reuse
@@ -47,4 +47,4 @@ define process name=filereader,instances=1
 }
 
 echo  "FileMicro-ReadRand Version 2.2 personality successfully loaded"
-run 2
+run 1

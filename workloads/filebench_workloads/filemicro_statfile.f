@@ -28,7 +28,7 @@
 # using $nthreads number of threads, doing "stat" calls on each file.
 #
 
-set $dir=/tmp
+set $dir=/tmp/wowfs/filebench
 set $nfiles=20000
 set $meandirwidth=200
 set $filesize=128k
