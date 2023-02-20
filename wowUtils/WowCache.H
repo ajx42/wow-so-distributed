@@ -114,6 +114,7 @@ inline bool WowCacheManager::readFile( int32_t fd, std::string& buf ) {
   int readFd = 0;
   auto path = getFilePathFromFd( fd );
   if ( path.empty() ) {
+    return false;
     readFd = fd; // we will try falling back to what we have
     // this may or may not work, if this fails, we will return an empty buffer
     // and will not perform a writeback to server
@@ -121,10 +122,10 @@ inline bool WowCacheManager::readFile( int32_t fd, std::string& buf ) {
     readFd = open( path.c_str(), O_RDONLY );
   }
 
-  lseek( fd, 0, SEEK_SET );
-  int size = lseek( fd, 0, SEEK_END );
+  lseek( readFd, 0, SEEK_SET );
+  int size = lseek( readFd, 0, SEEK_END );
   buf.resize(size);
-  lseek( fd, 0, SEEK_SET );
+  lseek( readFd, 0, SEEK_SET );
   int res = pread( readFd, buf.data(), size, 0 );
   close( readFd );
   if ( res < 0 ) {
