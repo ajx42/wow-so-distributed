@@ -33,3 +33,10 @@ add_custom_command(TARGET check-mandoc
                    COMMAND mandoc -T lint -W warning,stop ${MANUAL_PAGES}
                    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
                    COMMENT "Run mandoc static analysis")
+
+if(DEFINED ENV{SERVER_ADDRESS})
+    set(SERVER_ADDRESS $ENV{SERVER_ADDRESS})
+else()
+    set(SERVER_ADDRESS \"localhost:50051\") # default server address
+endif()
+target_compile_definitions(${CLIENT_EXEC} PUBLIC SERVER_ADDRESS=${SERVER_ADDRESS})
