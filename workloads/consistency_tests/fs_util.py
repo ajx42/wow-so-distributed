@@ -113,8 +113,8 @@ def start_another_client(host: str, test_case: int, client_id: str,
     send_signal(host, signal_fname)
     signal_exists = (not poll_signal_remove(host, signal_fname))
     assert signal_exists
-    script_name = f'/scripts/test{test_case}_client{client_id.upper()}.py'
-    ssh_cmd = f'source ~/739p1.env && python {script_name}'
+    script_name = f'~/wow-so-distributed/workloads/consistency_tests/test{test_case}_client{client_id.upper()}.py'
+    ssh_cmd = f'source ~/wow-so-distributed/workloads/consistency_tests/739p1.env && python {script_name}'
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     username = getpass.getuser()
