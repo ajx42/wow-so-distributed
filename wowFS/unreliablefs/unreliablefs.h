@@ -55,6 +55,10 @@ private:
 
 inline bool WowManager::writebackToServer( std::string path, int fd )
 {
+  if ( ! cmgr.isFileDirty( fd ) ) {
+    return true; // file is not dirty, so nothing to do.
+  }
+
   auto serverPath = removeMountPrefix( path );
   std::string readBuf;
   auto readStatus = cmgr.readFile( fd, readBuf );
