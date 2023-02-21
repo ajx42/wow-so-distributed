@@ -3,7 +3,11 @@
 # Prerequisite: 
 # - set up ssh keys on GitHub to access wow-so-distributed repo
 # - modify SERVER_ADDRESS environment variable to point to the server
+username=$(whoami)
 export SERVER_ADDRESS=\"c220g1-030827.wisc.cloudlab.us:50051\"
+
+# change shell to bash
+sudo usermod -s /bin/bash $username
 
 # update gcc
 yes '' | sudo add-apt-repository ppa:ubuntu-toolchain-r/test
