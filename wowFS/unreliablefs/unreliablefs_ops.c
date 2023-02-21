@@ -574,6 +574,10 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
         return ret;
     }
 
+    if ( fi->fh > 0 ) {
+      WowManager::Instance().writebackToServer( path, fi->fh );
+    }
+    
     ret = close(dup(fi->fh));
     if (ret == -1) {
         return -errno;
@@ -610,25 +614,8 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
       return 0;
     }
 
-    std::string converted_path = WowManager::Instance().removeMountPrefix(path);
-
-    // read local buffer
-    std::string readBuf;
-    auto readStatus = WowManager::Instance().cmgr.readFile( fi->fh, readBuf );
-    
-    // we reach here, it means we need to writeback
-    // Note that even if read buffer is empty, we need to write it back, since a
-    // user might have truncated a file to 0 bytes.
-    if ( readStatus ) {
-      // we will only write if read was successful
-      auto res = WowManager::Instance().client.Writeback(converted_path, readBuf);
-      if ( res.ret_ == -1 ) {
-        LogWarn("write back failed to server, local writes will be lost errno="
-          + std::to_string(res.server_errno_));
-        return -res.server_errno_;
-      }
-    } else {
-      LogWarn("write back disabled for path=" + std::string(path));
+    if ( ! WowManager::Instance().writebackToServer( path, fi->fh ) ) {
+      return -1; // if we have reached here, this means the writeback has failed
     }
 
     auto fd = fi->fh;
