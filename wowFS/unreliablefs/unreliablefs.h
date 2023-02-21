@@ -49,9 +49,7 @@ public:
 private:
   // singleton
   WowManager() : client(grpc::CreateChannel( 
-    SERVER_ADDRESS, grpc::InsecureChannelCredentials() )) {
-      printf("this is ip address %s\n", SERVER_ADDRESS);
-    }
+    SERVER_ADDRESS, grpc::InsecureChannelCredentials() )) {}
 
 };
 
