@@ -203,7 +203,9 @@ RPCResponse WowRPCClient::Writeback( const std::string& path, const std::string&
   int32_t remainingData = buf.size();
   int32_t chunkSize = 1 << 20; // 1 MB chunks
   int32_t pos = 0;
-  while ( remainingData ) {
+  // data being written back can be empty in case the file was truncated to
+  // 0 bytes.
+  do {
     request.set_path(path);
     // @TODO: this can be optimised
     auto epochSize = std::min( chunkSize, remainingData );
@@ -217,7 +219,7 @@ RPCResponse WowRPCClient::Writeback( const std::string& path, const std::string&
       std::cerr << "broken pipe! writes failing" << std::endl;
       break;
     }
-  }
+  } while ( remainingData );
   writer->WritesDone();
   auto status = writer->Finish();
   // if things went well return number of bytes written

@@ -112,7 +112,8 @@ inline bool WowCacheManager::saveToCache( std::string path, const std::string& b
     return true;
   }
 
-  LogWarn( "CacheManager failed to cache bytes=" + std::to_string( buf.size() ) + ". File=" + path + " won't be opened." );
+  LogWarn( "CacheManager failed to cache bytes=" + std::to_string( buf.size() ) 
+            + ". File=" + path + " won't be opened." );
   return false;
 }
 
@@ -125,22 +126,37 @@ inline bool WowCacheManager::readFile( int32_t fd, std::string& buf ) {
   int readFd = 0;
   auto path = getFilePathFromFd( fd );
   if ( path.empty() ) {
-    readFd = fd; // we will try falling back to what we have
-    // this may or may not work, if this fails, we will return an empty buffer
-    // and will not perform a writeback to server
+    // If path is empty, this means that the file descriptor we are dealing with is
+    // already closed.
+    LogWarn( "CacheManager couldn't recognise unknown file descriptor fd=" + std::to_string(fd)
+             + ". Is the fd already closed?" );
+    return false; // disable writeback
   } else {
     readFd = open( path.c_str(), O_RDONLY );
+    if ( readFd <= 0 ) {
+      // If we can't open the file for reading at this point, then it might mean
+      // the file has been deleted by another thread/process!
+      LogWarn( "CacheManager couldn't open file for reading path=" + path );
+      return false; // disable writeback
+    }
   }
 
-  lseek( fd, 0, SEEK_SET );
-  int size = lseek( fd, 0, SEEK_END );
+  lseek( readFd, 0, SEEK_SET );
+  int size = lseek( readFd, 0, SEEK_END );
+
+  if ( size == -1 ) {
+    // lseek has failed for some reason
+    return false; // disable writeback
+  }
+
   buf.resize(size);
-  lseek( fd, 0, SEEK_SET );
+  lseek( readFd, 0, SEEK_SET );
   int res = pread( readFd, buf.data(), size, 0 );
   close( readFd );
   if ( res < 0 ) {
     buf = "";
-    LogWarn( "CacheManager couldn't read file for fd=" + std::to_string( fd ) + " writeback to server will be disabled" );
+    LogWarn( "CacheManager couldn't read file for fd=" + std::to_string( fd )
+             + " writeback to server will be disabled" );
     return false;
   }
   return true;
