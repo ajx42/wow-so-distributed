@@ -4,7 +4,8 @@
 #include <dirent.h>
 
 #include <fstream>
-
+#include <chrono>
+#include <ctime>
 
 int32_t WowRPCClient::Ping( int32_t cmd )
 {
@@ -21,6 +22,26 @@ int32_t WowRPCClient::Ping( int32_t cmd )
     std::cerr << "RPC Failed" << std::endl;
     return -1;
   }
+}
+
+void WowRPCClient::PerformSpeedTest( int32_t identifier, int32_t msgSize )
+{
+  grpc::ClientContext context;
+  wowfs::SpeedTestRequest req;
+  wowfs:: Ack reply;
+
+  req.set_identifier( identifier );
+  std::string data('0', msgSize);
+  req.set_data( data );
+  
+  auto t_start = std::chrono::high_resolution_clock::now();
+  auto status = stub_->SpeedTest( &context, req, &reply );
+  auto t_end = std::chrono::high_resolution_clock::now();
+
+  std::cout << std::fixed << std::setprecision(10) << " "
+              << "Wall clock time passed: "
+              << std::chrono::duration<double, std::micro>(t_end-t_start).count()
+              << " us\n";
 }
 
 //Download struct stat from server for given filepath.

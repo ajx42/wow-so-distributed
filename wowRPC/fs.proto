@@ -19,6 +19,7 @@ service WowFS {
     rpc Rename(RenameRequest) returns (RenameResponse){}
     rpc Link(LinkRequest) returns (LinkResponse){}
     rpc Symlink(SymlinkRequest) returns (SymlinkResponse){}
+    rpc SpeedTest(SpeedTestRequest) returns (Ack) {}
 }
 
 message Ack {
@@ -156,3 +157,9 @@ message SymlinkResponse{
     int32 ret = 1;
     int32 server_errno = 2;
 }
+
+message SpeedTestRequest{
+    int32 identifier = 1;
+    bytes data = 2;
+}
+
