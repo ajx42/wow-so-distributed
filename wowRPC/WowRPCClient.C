@@ -6,6 +6,7 @@
 #include <fstream>
 #include <chrono>
 #include <ctime>
+#include <iomanip>
 
 int32_t WowRPCClient::Ping( int32_t cmd )
 {
