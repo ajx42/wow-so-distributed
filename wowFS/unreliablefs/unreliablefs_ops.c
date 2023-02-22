@@ -539,6 +539,10 @@ int unreliable_write(const char *path, const char *buf, size_t size,
 
     if(fi == NULL) {
         close(fd);
+    } else {
+      // @FIXME: there is this other path here, when fi is NULL
+      // not handling it for now
+      WowManager::Instance().cmgr.registerFileDirty( fd );
     }
 
     return ret;
@@ -574,6 +578,14 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
         return ret;
     }
 
+    // Note: When a file is closed the _release(...) is called async'ly
+    // This violates the guarantee one generally associates with close.
+    // This writeback here ensures that data goes to the server, provided
+    // a user calls flush before close.
+    if ( fi->fh > 0 ) {
+      WowManager::Instance().writebackToServer( path, fi->fh );
+    }
+    
     ret = close(dup(fi->fh));
     if (ret == -1) {
         return -errno;
@@ -605,30 +617,9 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
       return -1;
     }
 
-    if ( ! WowManager::Instance().cmgr.isDirty(path, fi->fh) ) {
-      LogInfo(std::string(path) + " file is not dirty, nothing to write back");
-      return 0;
-    }
-
-    std::string converted_path = WowManager::Instance().removeMountPrefix(path);
-
-    // read local buffer
-    std::string readBuf;
-    auto readStatus = WowManager::Instance().cmgr.readFile( fi->fh, readBuf );
-    
-    // we reach here, it means we need to writeback
-    // Note that even if read buffer is empty, we need to write it back, since a
-    // user might have truncated a file to 0 bytes.
-    if ( readStatus ) {
-      // we will only write if read was successful
-      auto res = WowManager::Instance().client.Writeback(converted_path, readBuf);
-      if ( res.ret_ == -1 ) {
-        LogWarn("write back failed to server, local writes will be lost errno="
-          + std::to_string(res.server_errno_));
-        return -res.server_errno_;
-      }
-    } else {
-      LogWarn("write back disabled for path=" + std::string(path));
+    // dirty-file checks happen within the writeback method
+    if ( ! WowManager::Instance().writebackToServer( path, fi->fh ) ) {
+      return -1; // if we have reached here, this means the writeback has failed
     }
 
     auto fd = fi->fh;
@@ -1010,10 +1001,17 @@ int unreliable_ftruncate(const char *path, off_t length,
     }
 
     ret = truncate(path, length);
+
     if (ret == -1) {
         return -errno;
     }
     
+    // @FIXME: in general a user can call ftruncate with the length set
+    // to the file size - this will result in dirty in the current impl.
+    if ( fi->fh > 0 ) {
+      WowManager::Instance().cmgr.registerFileDirty( fi->fh );
+    }
+   
     return 0;    
 }
 
@@ -1146,9 +1144,12 @@ int unreliable_fallocate(const char *path, int mode,
     if (ret == -1) {
         return -errno;
     }
-
+    // @FIXME: if offset + len != filesize then we should be marking this
+    // file as dirty. For now we assume it as always dirty.
     if(fi == NULL) {
 	close(fd);
+    } else {
+      WowManager::Instance().cmgr.registerFileDirty( fi-> fh );
     }
     
     return 0;    
