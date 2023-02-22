@@ -7,19 +7,29 @@
 
 #include <mutex>
 #include <thread>
+#include <optional>
 
 class WowCacheManager
 {
 public:
+   struct FileMeta {
+    std::string path;
+    bool isDirty = false;
+  };
+
   bool validate( std::string path, int32_t fh ) { return true; /*@TODO*/ }
-  bool isDirty( std::string path, int32_t fh ) { return true; /*@TODO*/ }
   bool readFile( int32_t fd, std::string& buf ); 
   bool saveToCache( std::string path, const std::string& buf ); 
 
   void registerFileClose( int32_t fd );
   void registerFileOpen( int32_t fd, std::string filepath );
+  void registerFileDirty( int32_t fd );
+  
   bool isFileOpen( std::string filepath );
+  bool isFileDirty( int32_t fd );
   std::string getFilePathFromFd( int32_t fd );
+  std::optional<FileMeta> getFileMetaFromFd( int32_t fd );
+
   void deleteFromCache( std::string path );
   void rename( std::string oldPath, std::string newPath );
   bool constructDirPath( std::string path );
@@ -35,19 +45,34 @@ private:
   // open files to avoid potential disasters of reading some other file
   // and sync-ing that with the server.
   // @TODO: this can be optimised with TRIEs
-  std::map<int32_t, std::string> fdToFilepath_;
+
+  std::map<int32_t, FileMeta> fdToMeta_;
   std::map<std::string, int32_t> filepathToFreq_;
 };
+
+inline void WowCacheManager::registerFileDirty( int32_t fd )
+{
+  const std::lock_guard<std::mutex> lock( mapMutex_ );
+  if ( fdToMeta_.find( fd ) == fdToMeta_.end() ) {
+    LogError( "CacheManager can't register dirty, unknown fd=" + std::to_string( fd )
+              + ". Note this looks like a serious issue!" );
+  } else {
+    if ( ! fdToMeta_[ fd ].isDirty ) {
+      LogInfo( "CacheManager registered file dirty for fd=" + std::to_string( fd ) );
+    }
+    fdToMeta_[ fd ].isDirty = true;
+  }
+}
 
 inline void WowCacheManager::registerFileClose( int32_t fd )
 {
   const std::lock_guard<std::mutex> lock( mapMutex_ );
-  if ( fdToFilepath_.find( fd ) == fdToFilepath_.end() ) {
+  if ( fdToMeta_.find( fd ) == fdToMeta_.end() ) {
     LogWarn( "CacheManager can't register close, unknown fd=" + std::to_string( fd ) );
     return;
   }
-  auto path = fdToFilepath_[ fd ];
-  fdToFilepath_.erase( fd );
+  auto path = fdToMeta_[ fd ].path;
+  fdToMeta_.erase( fd );
   auto newFreq = --filepathToFreq_[ path ];
   if ( ! newFreq ) {
     filepathToFreq_.erase( path );
@@ -61,7 +86,7 @@ inline void WowCacheManager::registerFileOpen( int32_t fd, std::string filepath 
   if ( filepathToFreq_.find( filepath ) == filepathToFreq_.end() ) {
     filepathToFreq_[ filepath ] = 0;
   }
-  fdToFilepath_[ fd ] = filepath;
+  fdToMeta_[ fd ] = FileMeta { .path = filepath, .isDirty = false } ;
   filepathToFreq_[ filepath ]++;
   LogInfo( "CacheManager registered file open for fd=" + std::to_string( fd ) + " path=" + filepath );
 }
@@ -72,15 +97,29 @@ inline bool WowCacheManager::isFileOpen( std::string filepath )
   return filepathToFreq_.find( filepath ) != filepathToFreq_.end();
 }
 
-inline std::string WowCacheManager::getFilePathFromFd( int32_t fd ) {
+inline std::optional<WowCacheManager::FileMeta>
+WowCacheManager::getFileMetaFromFd( int32_t fd )
+{
   const std::lock_guard<std::mutex> lock( mapMutex_ );
-  if ( fdToFilepath_.find( fd ) == fdToFilepath_.end() ) {
-    LogWarn( "CacheManager can't find path for unknown fd=" + std::to_string( fd ) );
-    return "";
+  if ( fdToMeta_.find( fd ) == fdToMeta_.end() ) {
+    LogWarn( "CacheManager can't find meta for unknown fd=" + std::to_string( fd ) );
+    return {};
   }
-  LogInfo( "CacheManager read mapping fd=" + std::to_string( fd ) + " <> file=" + fdToFilepath_[ fd ] );
-  return fdToFilepath_[ fd ];
+  LogInfo( "CacheManager read mapping fd=" + std::to_string( fd ) + " <> file="
+           + fdToMeta_[ fd ].path + " isDirty=" + std::to_string( (int)fdToMeta_[fd].isDirty ) );
+  return { fdToMeta_[ fd ] };
 }
+
+inline std::string WowCacheManager::getFilePathFromFd( int32_t fd ) {
+  auto meta = getFileMetaFromFd( fd );
+  return meta.has_value() ? meta.value().path : "";
+}
+
+inline bool WowCacheManager::isFileDirty( int32_t fd )
+{
+  auto meta = getFileMetaFromFd( fd );
+  return meta.has_value() ? meta.value().isDirty : false;
+}  
 
 inline bool WowCacheManager::constructDirPath( std::string path )
 {

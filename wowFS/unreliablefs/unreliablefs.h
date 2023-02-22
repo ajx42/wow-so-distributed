@@ -45,13 +45,36 @@ public:
   
   std::string removeMountPrefix(std::string file_path) ;
   StatInfo shouldFetch( std::string path );
-
+  bool writebackToServer( std::string path, int fd );
 private:
   // singleton
   WowManager() : client(grpc::CreateChannel( 
-    "localhost:50051", grpc::InsecureChannelCredentials() )) {}
+    SERVER_ADDRESS, grpc::InsecureChannelCredentials() )) {}
 
 };
+
+inline bool WowManager::writebackToServer( std::string path, int fd )
+{
+  if ( ! cmgr.isFileDirty( fd ) ) {
+    return true; // file is not dirty, so nothing to do.
+  }
+
+  auto serverPath = removeMountPrefix( path );
+  std::string readBuf;
+  auto readStatus = cmgr.readFile( fd, readBuf );
+
+  if ( readStatus ) {
+    auto res = client.Writeback( serverPath, readBuf );
+    if ( res.ret_ == -1 ) {
+      LogWarn("write back failed to server, local writes will be lost errno="
+              + std::to_string(res.server_errno_));
+      return false;
+    }
+  } else {
+    LogInfo( "write back disabled for path=" + std::string( path ) );
+  }
+  return true;
+}
 
 inline std::string WowManager::removeMountPrefix(std::string file_path)
 {
