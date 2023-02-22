@@ -8,6 +8,7 @@
 #include <ctime>
 #include <iomanip>
 
+// Note this method is only used for Testing
 int32_t WowRPCClient::Ping( int32_t cmd )
 {
   wowfs::Cmd msg; msg.set_sup( cmd );
@@ -25,24 +26,27 @@ int32_t WowRPCClient::Ping( int32_t cmd )
   }
 }
 
-void WowRPCClient::PerformSpeedTest( int32_t identifier, int32_t msgSize )
+// Note this method is only used for Testing
+void WowRPCClient::PerformSpeedTest( int32_t identifier, int64_t msgSize )
 {
   grpc::ClientContext context;
   wowfs::SpeedTestRequest req;
   wowfs:: Ack reply;
 
   req.set_identifier( identifier );
-  std::string data('0', msgSize);
+  std::string data(msgSize, '0');
   req.set_data( data );
   
   auto t_start = std::chrono::high_resolution_clock::now();
   auto status = stub_->SpeedTest( &context, req, &reply );
   auto t_end = std::chrono::high_resolution_clock::now();
 
-  std::cout << std::fixed << std::setprecision(10) << " "
-              << "Wall clock time passed: "
+  std::cout   << "Size=" << msgSize <<"|"
+              << "Status=" << status.ok() << "|"
+              << std::fixed << std::setprecision(10)
+              << "WallClockTime(us)="
               << std::chrono::duration<double, std::micro>(t_end-t_start).count()
-              << " us\n";
+              << std::endl;
 }
 
 //Download struct stat from server for given filepath.
