@@ -455,7 +455,8 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
         // failed to save to cache, @TODO: should we let it fall through?
       }
     }
-
+  
+    WowManager::Instance().cmgr.constructDirPath( path );
     ret = open(path, fi->flags);
     if ( ret == -1 ) {
       // and now we are inconsistent with the server, but this is largely benign
@@ -616,7 +617,9 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
     auto readStatus = WowManager::Instance().cmgr.readFile( fi->fh, readBuf );
     
     // we reach here, it means we need to writeback
-    if ( ! readBuf.empty() && readStatus ) {
+    // Note that even if read buffer is empty, we need to write it back, since a
+    // user might have truncated a file to 0 bytes.
+    if ( readStatus ) {
       // we will only write if read was successful
       auto res = WowManager::Instance().client.Writeback(converted_path, readBuf);
       if ( res.ret_ == -1 ) {
@@ -624,6 +627,8 @@ int unreliable_release(const char *path, struct fuse_file_info *fi)
           + std::to_string(res.server_errno_));
         return -res.server_errno_;
       }
+    } else {
+      LogWarn("write back disabled for path=" + std::string(path));
     }
 
     auto fd = fi->fh;
@@ -978,7 +983,9 @@ int unreliable_create(const char *path, mode_t mode,
         return -response.server_errno_;
     }
     
+    WowManager::Instance().cmgr.constructDirPath( path ); 
     ret = open(path, fi->flags, S_IRWXU | S_IRWXG | S_IRWXO);
+    
     if ( ret == -1 ) {
       LogWarn("client create failed: errno " + std::to_string(errno));
       return -errno;
