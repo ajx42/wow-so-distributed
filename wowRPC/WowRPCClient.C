@@ -200,9 +200,9 @@ RPCResponse WowRPCClient::Writeback( const std::string& path, const std::string&
   grpc::ClientContext context;
   std::unique_ptr<grpc::ClientWriter<wowfs::StreamWriteRequest>> writer(
       stub_->Writeback(&context, &response) );
-  int32_t remainingData = buf.size();
-  int32_t chunkSize = 1 << 20; // 1 MB chunks
-  int32_t pos = 0;
+  int64_t remainingData = buf.size();
+  int64_t chunkSize = 1 << 20; // 1 MB chunks
+  int64_t pos = 0;
   // data being written back can be empty in case the file was truncated to
   // 0 bytes.
   do {

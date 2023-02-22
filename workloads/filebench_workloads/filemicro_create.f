@@ -46,4 +46,4 @@ define process name=filecreater,instances=1
 
 echo  "FileMicro-Create Version 2.1 personality successfully loaded"
 
-run 10
+run 30
