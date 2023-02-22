@@ -1145,9 +1145,11 @@ int unreliable_fallocate(const char *path, int mode,
         return -errno;
     }
     // @FIXME: if offset + len != filesize then we should be marking this
-    // file as dirty.
+    // file as dirty. For now we assume it as always dirty.
     if(fi == NULL) {
 	close(fd);
+    } else {
+      WowManager::Instance().cmgr.registerFileDirty( fi-> fh );
     }
     
     return 0;    
