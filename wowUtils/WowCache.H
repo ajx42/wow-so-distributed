@@ -181,7 +181,7 @@ inline bool WowCacheManager::readFile( int32_t fd, std::string& buf ) {
   }
 
   lseek( readFd, 0, SEEK_SET );
-  int size = lseek( readFd, 0, SEEK_END );
+  off64_t size = lseek64( readFd, 0, SEEK_END );
 
   if ( size == -1 ) {
     // lseek has failed for some reason

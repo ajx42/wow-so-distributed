@@ -26,7 +26,7 @@
 
 # Single threaded sequential reads (1MB I/Os) on a 1G file.
 
-set $dir=/tmp
+set $dir=/tmp/wowfs/filebench
 set $cached=false
 set $filesize=1g
 set $iosize=1m

@@ -98,8 +98,8 @@ message CreateResponse{
 message StreamWriteRequest {
     string path = 1;
     bytes buf = 2;
-    int32 size = 3;
-    int32 offset = 4; 
+    int64 size = 3;
+    int64 offset = 4; 
 }
 
 message StreamWriteResponse {
@@ -109,7 +109,7 @@ message StreamWriteResponse {
 
 message StreamReadRequest {
     string path = 1;
-    int32 size = 2;
+    int64 size = 2;
 }
 
 message StreamReadResponse {

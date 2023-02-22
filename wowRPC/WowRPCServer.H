@@ -236,7 +236,7 @@ grpc::Status WowFSServiceImpl::Writeback(
     grpc::ServerContext* context, grpc::ServerReader<wowfs::StreamWriteRequest>* reader,
     wowfs::StreamWriteResponse* response)
 {
-  int numBytesWritten = 0;
+  int64_t numBytesWritten = 0;
   int outputFd = -1;
   wowfs::StreamWriteRequest req;
   while ( reader->Read( &req ) ) {

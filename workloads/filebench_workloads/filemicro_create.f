@@ -27,7 +27,7 @@
 # Simple way to create a file.  Start off with a zero length file, and issue
 # 1024 ($count) 1MB appends.
 
-set $dir=/tmp
+set $dir=/tmp/wowfs/filebench
 set $count=500000
 set $iosize=1m
 set $nthreads=1
@@ -46,4 +46,4 @@ define process name=filecreater,instances=1
 
 echo  "FileMicro-Create Version 2.1 personality successfully loaded"
 
-run 10
+run 30
