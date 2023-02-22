@@ -32,7 +32,7 @@ file
 EOF
 
 #Mount FUSE fs.
-../build/wowFS/unreliablefs/wowfs /tmp/wowfs -basedir=/tmp/wowfs_local -seed=1618680646 -d
+./build/wowFS/unreliablefs/wowfs /tmp/wowfs -basedir=/tmp/wowfs_local -seed=1618680646 -d
 
 #Start up file server
 # ./build/wowRPC/server
