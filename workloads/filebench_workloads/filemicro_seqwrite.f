@@ -46,4 +46,4 @@ define process name=filewriter,instances=1
 }
 
 echo  "FileMicro-SeqWrite Version 2.2 personality successfully loaded"
-run 10
+run 20

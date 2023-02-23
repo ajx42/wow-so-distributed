@@ -45,4 +45,4 @@ define process name=examinefiles,instances=1
 }
 
 echo  "Stat File Version 1.0 personality successfully loaded"
-run 10
+run 20

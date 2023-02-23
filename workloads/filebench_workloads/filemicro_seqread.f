@@ -43,4 +43,4 @@ define process name=filereader,instances=1
 }
 
 echo  "FileMicro-SeqRead Version 2.1 personality successfully loaded"
-run 10
+run 20

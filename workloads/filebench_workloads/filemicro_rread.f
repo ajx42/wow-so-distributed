@@ -27,12 +27,17 @@
 # Single threaded random reads (2KB I/Os) on a 1GB file.
 # Stops after 128MB ($bytes) has been read.
 
+
+#WowFS Adjustment, moved iosize to 1m to match sequential read test.
+#Additionally, removed 128 byte end point. Otherwise filebench reports
+#no bandwidth usage?
+
 set $dir=/tmp/wowfs/filebench
 set $bytes=128m
 set $cached=false
 set $filesize=4g
-set $iosize=2k
-set $iters=1000
+set $iosize=1m
+set $iters=10000000
 set $nthreads=1
 
 define file name=bigfile1,path=$dir,size=$filesize,prealloc,reuse
@@ -41,10 +46,10 @@ define process name=filereader,instances=1
 {
   thread name=filereaderthread,memsize=10m,instances=$nthreads
   {
-    flowop read name=write-file,filesetname=bigfile1,random,iosize=$iosize,iters=$iters
-    flowop finishonbytes name=finish,value=$bytes
+    flowop read name=randread-file,filename=bigfile1,random,iosize=$iosize,iters=$iters
+    #flowop finishonbytes name=finish,value=$bytes
   }
 }
 
 echo  "FileMicro-ReadRand Version 2.2 personality successfully loaded"
-run 1
+run 20 

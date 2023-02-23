@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./cleanup.sh
+./scripts/cleanup.sh
 rm /tmp/logs.unreliable.txt
 
 tmux new-session -d -s my_session

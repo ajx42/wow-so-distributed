@@ -74,4 +74,4 @@ define process name=filereader,instances=1
 
 echo  "Web-server Version 3.1 personality successfully loaded"
 
-run 10
+run 20
