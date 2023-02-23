@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 
-
+#Class to hold per operation statistics
 class OperationData:
 	ops = []
 	opRate = []
@@ -18,7 +18,7 @@ class OperationData:
 		self.minLatency = []
 		self.maxLatency = []
 
-
+#Class to hold summary results printed at end of each test
 class TestSummaryData:
 	ops = []
 	opRate = []
@@ -35,10 +35,10 @@ class TestSummaryData:
 		self.bandwidth = []
 		self.avgLatency = []
 
-
+#Key value to use in results dict
 SummaryLabel = "OPERATION_SUMMARY"
 
-
+#Retrieve test results from given file
 def extractData(f):
 	data = {}
 
@@ -76,7 +76,6 @@ def extractData(f):
 				if SummaryLabel not in data[testName].keys():
 					data[testName][SummaryLabel] = TestSummaryData()
 
-				#summaryData = TestSummaryData()
 				data[testName][SummaryLabel].ops = np.append(
 					data[testName][SummaryLabel].ops, (int(splt[3])))
 				data[testName][SummaryLabel].opRate = np.append(
@@ -90,7 +89,6 @@ def extractData(f):
 				data[testName][SummaryLabel].avgLatency = np.append(
 					data[testName][SummaryLabel].avgLatency, (float(splt[10].replace("ms/op", ""))))
 
-				#data[testName][SummaryLabel].append(summaryData)
 				continue
 
 			#Allocate list for OperationData if not present
@@ -111,9 +109,6 @@ def extractData(f):
 			data[testName][splt[0]].maxLatency = np.append(
 				data[testName][splt[0]].maxLatency, (float(splt[7].replace("ms]", ""))))
 
-			#data[testName][splt[0]].append(opData)
-			#print(opData.maxLatency)
-
 	return data
 
 
@@ -121,14 +116,17 @@ def main(inFile):
 
 	data = {}
 
+	#Fill dict with test results
 	with open(inFile) as f:
 		data = extractData(f)
 
+	#Formatting output table
 	gridFormat = "{:30}{:20}{:20}{:20}{:20}{:20}{:20}"
 	gridFormatEntry = "{:30}{:<20.2f}{:<20.2f}{:<20.2f}{:<20.2f}{:<20.2f}{:<20.2f}"
 	labels = gridFormat.format(
 		"Operation", "ops", "ops/s", "mb/s", "ms/op", "Min ms", "Max ms")
 
+	#Per operation results 
 	print("==========Operation BreakDown==========")
 	for k1 in data.keys():
 		print(k1, "----------------------")
@@ -139,6 +137,7 @@ def main(inFile):
 				print(gridFormatEntry.format(k2, entry.ops.mean(), entry.opRate.mean(),
 					entry.bandwidth.mean(), entry.avgLatency.mean(), entry.minLatency.min(), entry.maxLatency.max()))
 
+	#Test summary results
 	print("==========Test Summary==========")
 	summaryColLabels = gridFormat.format("Test", "ops", "ops/s", "rd", "wr", "mb/s", "ms/op")
 	print(summaryColLabels)
