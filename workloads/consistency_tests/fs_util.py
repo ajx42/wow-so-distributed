@@ -29,7 +29,8 @@ def get_shell_cmd_output(
                           capture_output=True,
                           shell=True,
                           cwd=exec_dir,
-                          timeout=timeout_sec)
+                          timeout=timeout_sec,
+                          close_fds=True)
     outs = proc.stdout.decode(encoding="utf-8").splitlines()
     errs = proc.stderr.decode(encoding="utf-8").splitlines()
     return outs, errs, proc.returncode
@@ -127,10 +128,10 @@ def start_another_client(host: str, test_case: int, client_id: str,
     client.connect(hostname=host, username=username, key_filename=sshkey_fname)
     stdin, stdout, stderr = client.exec_command(ssh_cmd)
     # useful when connection init has issues
-    #print(stdout.readlines())
-    #print(stderr.readlines())
-    #client.close()
-    #print(ssh_cmd)
+    # print(stdout.readlines())
+    # print(stderr.readlines())
+    # client.close()
+    # print(ssh_cmd)
 
 
 def send_signal(host: str, signal_fname: str):
@@ -173,7 +174,6 @@ def mkdir(dir_name: str):
 
 def delete_file(fname: str):
     ret = os.unlink(fname)
-    assert ret == 0
 
 
 def stat_file(fname: str) -> os.stat_result:
