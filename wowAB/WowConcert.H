@@ -48,8 +48,8 @@ struct WowPigeon
 class WowOrchestra
 {
 public:
-  WowOrchestra( int32_t port, std::string filename ) 
-    : socket_( port ), filename_( filename ) {} 
+  WowOrchestra( int32_t port ) 
+    : socket_( port ) {} 
   void perform( int32_t rounds );
 
 private:
@@ -60,7 +60,6 @@ private:
   bool notifyAll( MessageType );
 
   WowUDPSocket socket_;
-  std::string filename_;
   std::map<ParticipantId, struct sockaddr> contactDetails_;
 };
 

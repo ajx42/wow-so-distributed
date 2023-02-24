@@ -27,8 +27,7 @@ int main( int argc, char** argv ) {
   // these to int directly
   auto port = program.get<std::string>( "--port" );
   auto numIters = program.get<std::string>( "--iters" );
-  auto fName = program.get<std::string>( "--file" );
 
-  WowOrchestra abtesting( std::stoi( port ), fName );
+  WowOrchestra abtesting( std::stoi( port ) );
   abtesting.perform( std::stoi( numIters ) );
 }
