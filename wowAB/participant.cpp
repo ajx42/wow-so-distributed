@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstring>
 
 #include "WowSocket.H"
 #include "WowConcert.H"
@@ -53,7 +54,7 @@ int main( int argc, char** argv ) {
   } 
 
   struct sockaddr_in servaddr;
-  memset(&servaddr, 0, sizeof(servaddr));
+  std::memset(&servaddr, 0, sizeof(servaddr));
   // Filling server information
   servaddr.sin_family = AF_INET;
   servaddr.sin_port = htons( oPort );

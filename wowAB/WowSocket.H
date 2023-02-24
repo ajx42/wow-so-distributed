@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include <iostream>
 #include <array>
 #include <exception>
@@ -51,8 +52,8 @@ inline WowUDPSocket::WowUDPSocket( int32_t port )
 
   setsockopt( sockFd_, SOL_SOCKET, SO_REUSEADDR, (const void*) &sockOptVal_,
              sizeof( int ) );
- 
-  bzero( (char *) &sockAddr_, sizeof( sockAddr_ ) );
+
+  std::memset( &sockAddr_, 0, sizeof(sockAddr_) ); 
   sockAddr_.sin_family = AF_INET;
   sockAddr_.sin_addr.s_addr = htonl( INADDR_ANY );
   sockAddr_.sin_port = htons( sockPort_ );
