@@ -4,3 +4,6 @@
 [submodule "workloads/filebench"]
 	path = workloads/filebench
 	url = git@github.com:filebench/filebench.git
+[submodule "argparse"]
+	path = argparse
+	url = git@github.com:p-ranav/argparse.git
