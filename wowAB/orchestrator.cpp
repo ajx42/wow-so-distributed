@@ -10,6 +10,10 @@ int main( int argc, char** argv ) {
     .required()
     .help( "run orchestrator service on this port" );
 
+  program.add_argument( "--secport" )
+    .required()
+    .help( "run orchestrator secondary service on this port" );
+
   program.add_argument( "--iters" )
     .required()
     .help( "number of test iterations" );
@@ -26,8 +30,9 @@ int main( int argc, char** argv ) {
   // fetch these as strings, oddly enough the library can't cast
   // these to int directly
   auto port = program.get<std::string>( "--port" );
+  auto sec  = program.get<std::string>( "--secport" );
   auto numIters = program.get<std::string>( "--iters" );
 
-  WowOrchestra abtesting( std::stoi( port ) );
+  WowOrchestra abtesting( std::stoi( port ), std::stoi( sec ) );
   abtesting.perform( std::stoi( numIters ) );
 }

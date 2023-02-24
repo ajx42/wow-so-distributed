@@ -2,6 +2,7 @@
 #include <map>
 #include <set>
 #include <array>
+#include <thread>
 
 #include "WowSocket.H"
 #include "WowLogger.H"
@@ -37,7 +38,6 @@ constexpr const int32_t getNumParticipants()
   // substract 1 since we are not counting the orchestrator
 }
 
-
 struct WowPigeon
 {
   ParticipantId origin = ParticipantId::LAST_PT;
@@ -48,18 +48,19 @@ struct WowPigeon
 class WowOrchestra
 {
 public:
-  WowOrchestra( int32_t port ) 
-    : socket_( port ) {} 
+  WowOrchestra( int32_t port, int32_t secondaryPort ) 
+    : socket_( port ), secondarySocket_( secondaryPort ) {} 
   void perform( int32_t rounds );
 
 private:
    // wait for everyone to join
   void waitRegistrations();
   void waitMsgSubset( MessageType, int32_t pmask );
-  bool notifyOne( ParticipantId, MessageType );
+  bool notifyOne( ParticipantId, MessageType, bool useSecondary = false );
   bool notifyAll( MessageType );
 
   WowUDPSocket socket_;
+  WowUDPSocket secondarySocket_; // used to send triggers to NODE_B
   std::map<ParticipantId, struct sockaddr> contactDetails_;
 };
 
@@ -83,14 +84,15 @@ inline void WowOrchestra::waitRegistrations()
   }
 }
 
-inline bool WowOrchestra::notifyOne( ParticipantId id, MessageType mtype )
+inline bool WowOrchestra::notifyOne( ParticipantId id, MessageType mtype, bool useSecondary /*false*/ )
 {
+  auto& sendSocket = useSecondary ? secondarySocket_ : socket_;
   std::vector<uint8_t> writeBuf( sizeof(WowPigeon) );
   *reinterpret_cast<WowPigeon*>( writeBuf.data() ) = WowPigeon {
     .origin = ParticipantId::ORCHESTRATOR,
     .kind = mtype
   };
-  return socket_.sendTo( contactDetails_[id], writeBuf );
+  return sendSocket.sendTo( contactDetails_[id], writeBuf );
 }
 
 inline bool WowOrchestra::notifyAll( MessageType mtype )
@@ -125,12 +127,26 @@ inline void WowOrchestra::perform( int32_t rounds )
   
   waitMsgSubset(
     MessageType::READY, ParticipantId::NODE_A | ParticipantId::NODE_B | ParticipantId::SINK );
-  
+ 
+  // my poor attempt at trying to send triggers in parallel as far as possible 
+  // the writes are however so small that this hardly is going to make a difference
+  auto notifyABParallel = [&]( auto&& mtype ) {
+    auto workerA = std::thread([&](){
+      notifyOne( ParticipantId::NODE_A, mtype );    
+    });
+
+    auto workerB = std::thread([&](){
+      notifyOne( ParticipantId::NODE_B, mtype, true );
+    });
+
+    workerA.join();
+    workerB.join();
+  };
+
   while ( rounds-- ) {
     // trigger writes
-    notifyOne( ParticipantId::NODE_A, MessageType::TRIGGER );
-    notifyOne( ParticipantId::NODE_B, MessageType::TRIGGER );
-  
+    notifyABParallel( MessageType::TRIGGER );
+
     // wait for clients to be done with the writes
     waitMsgSubset(
       MessageType::DONE, ParticipantId::NODE_A | ParticipantId::NODE_B );
@@ -141,20 +157,19 @@ inline void WowOrchestra::perform( int32_t rounds )
     // wait for sink to be done and be ready for next round
     waitMsgSubset( MessageType::READY, ParticipantId::SINK );
 
-    // ask clients to be ready again
-    notifyOne( ParticipantId::NODE_A, MessageType::RESET );
-    notifyOne( ParticipantId::NODE_B, MessageType::RESET );
-
+    // reset and prepare for next round
+    notifyABParallel( MessageType::RESET );
+    
     // wait for clients to be ready for writes again
     waitMsgSubset(
       MessageType::READY, ParticipantId::NODE_A | ParticipantId::NODE_B );
   }
 }
 
+// File System Nodes i.e. A, B, and Server (Sink) are the participants.
 class WowParticipant
 {
 public:
-
   static constexpr size_t READ_BUF_SIZE = 256;
 
   WowParticipant(
