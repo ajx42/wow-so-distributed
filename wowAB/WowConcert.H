@@ -213,7 +213,14 @@ inline void WowParticipant::playSink()
     waitFor( MessageType::GO );
     
     auto fd = open( filename_.c_str(), O_RDONLY );
-    auto ret = read( fd, readBuf_.data(), READ_BUF_SIZE );
+    
+    int ret = 0; // a FUGLY hack, since writes from clients return even before writing
+                 // back, so their signal does not imply, the write itself is done
+                 // so we need to make sure, we actually read something!
+    while ( ret == 0 ) {
+      ret = read( fd, readBuf_.data(), READ_BUF_SIZE );
+    }
+
     if ( ret != -1 ) {
       std::cout << iter++ << " : " << std::string( (const char*)readBuf_.data(), ret ) << std::endl;
     }
