@@ -234,29 +234,26 @@ inline void WowParticipant::playClient()
   std::string nodeName = id_ == ParticipantId::NODE_A ? "node_a" : "node_b";
   notifyOrchestrator( MessageType::REGISTRATION );
   waitFor( MessageType::ACK );
-
-  auto fd = open( filename_.c_str(), O_CREAT | O_TRUNC | O_WRONLY, 0777 );
-
+  
   while( true ) {
     //prepare
-    auto ret = pwrite( fd, nodeName.data(), nodeName.size(), 0 );
-    if ( ret == -1 ) {
+    auto fd = open( filename_.c_str(), O_CREAT | O_TRUNC | O_WRONLY, 0777 );
+    auto ret = write( fd, nodeName.data(), nodeName.size() );
+     if ( ret == -1 ) {
       std::cout << "write failed: " << errno << std::endl;
     }
     std::cout << nodeName << " prepared." << std::endl;
 
+
     notifyOrchestrator( MessageType::READY );
     waitFor( MessageType::TRIGGER );
-   
-    // instead of closing to write, flush it 
-    fsync( fd );
+    
+    close( fd );
     std::cout << nodeName << " triggered." << std::endl;
     
     notifyOrchestrator( MessageType::DONE );
-    waitFor( MessageType::RESET ); // ideally we should exit gracefully
+    waitFor( MessageType::RESET );
   }
-
-  close( fd );
 }
 
 inline bool WowParticipant::notifyOrchestrator( MessageType mtype )
