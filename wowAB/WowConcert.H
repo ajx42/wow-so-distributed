@@ -3,6 +3,7 @@
 #include <set>
 #include <array>
 #include <thread>
+#include <chrono>
 
 #include "WowSocket.H"
 #include "WowLogger.H"
@@ -211,15 +212,15 @@ inline void WowParticipant::playSink()
   while ( true ) {
     notifyOrchestrator( MessageType::READY );
     waitFor( MessageType::GO );
+    // a FUGLY hack, since writes from clients return even before writing
+    // back, their signal does not imply that the write itself is done
+    // so we need to make sure, we actually read something! We sleep here
+    // and hope things work out.
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds( 5 ) );
     
     auto fd = open( filename_.c_str(), O_RDONLY );
-    
-    int ret = 0; // a FUGLY hack, since writes from clients return even before writing
-                 // back, so their signal does not imply, the write itself is done
-                 // so we need to make sure, we actually read something!
-    while ( ret == 0 ) {
-      ret = read( fd, readBuf_.data(), READ_BUF_SIZE );
-    }
+    auto ret = read( fd, readBuf_.data(), READ_BUF_SIZE );
 
     if ( ret != -1 ) {
       std::cout << iter++ << " : " << std::string( (const char*)readBuf_.data(), ret ) << std::endl;
