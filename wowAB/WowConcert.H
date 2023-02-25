@@ -217,7 +217,7 @@ inline void WowParticipant::playSink()
     // so we need to make sure, we actually read something! We sleep here
     // and hope things work out.
     std::this_thread::sleep_for(
-        std::chrono::milliseconds( 5 ) );
+        std::chrono::milliseconds( 50 ) );
     
     auto fd = open( filename_.c_str(), O_RDONLY );
     auto ret = read( fd, readBuf_.data(), READ_BUF_SIZE );
