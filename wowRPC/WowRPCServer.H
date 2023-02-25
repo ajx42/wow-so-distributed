@@ -239,20 +239,31 @@ grpc::Status WowFSServiceImpl::Writeback(
   int64_t numBytesWritten = 0;
   int outputFd = -1;
   wowfs::StreamWriteRequest req;
+
+  //First write file to tmpPath, then rename() to finalPath
+  std::string finalPath;
+  std::string tmpPath;
+  
   while ( reader->Read( &req ) ) {
+
+      finalPath = this->basedir_ + req.path();
+      tmpPath = finalPath + ".wow";
+
     if ( outputFd == -1 ) {
       // there may be a case when a file is deleted on the server, while another user
       // writes back to it later, therefore we should create a file if it doesn't exist
-      outputFd = open( (this->basedir_ + req.path()).c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0777 );
+      outputFd = open( tmpPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0777 );
       if ( outputFd == -1 ) {
         // something went wrong
         response->set_ret( -1 );
         response->set_server_errno( errno );
         return grpc::Status::OK;
       }
-      std::cerr << "file opened for writing: " << this->basedir_ + req.path() << std::endl;
+      std::cerr << "file opened for writing: " << tmpPath << std::endl;
     }
     auto res = pwrite( outputFd, req.buf().data(), req.size(), req.offset() );
+
+    //TODO: What do we do with tmp file on failed write?
     if ( res == -1 ) {
       response->set_ret( -1 );
       response->set_server_errno( errno );
@@ -265,6 +276,11 @@ grpc::Status WowFSServiceImpl::Writeback(
     fsync( outputFd );
     close( outputFd );
   }
+  
+  //TODO: This could silently fail, we aren't including its return in our response
+  std::cerr << "Write complete, renaming file" << std::endl;
+  rename(tmpPath.c_str(), finalPath.c_str());
+
   std::cerr << "writes completed, # bytes written: " << numBytesWritten << std::endl;
   response->set_ret( numBytesWritten );
   response->set_server_errno( 0 );
