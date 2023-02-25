@@ -636,7 +636,9 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
         WowWritebackReorderManager::Instance().addNewWriteback(
           path, *fi, false );
       } else { // otherwise we just writeback as usual
-        WowManager::Instance().writebackToServer( path, fi->fh );
+        if ( ! WowManager::Instance().writebackToServer( path, fi->fh ) ) {
+            return -1; // if we have reached here, this means the writeback has failed
+        }
       }
     }
     

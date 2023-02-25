@@ -250,12 +250,6 @@ grpc::Status WowFSServiceImpl::Writeback(
   std::string finalPath;
   std::string tmpPath;
 
-  // crash the server if withCrashOnWrite_ is set
-  if ( withCrashOnWrite_ ) {
-    std::cerr << "Crashing the server on purpose" << std::endl;
-    std::terminate();
-  }
-  
   while ( reader->Read( &req ) ) {
 
       finalPath = basedir_ + req.path();
@@ -287,6 +281,12 @@ grpc::Status WowFSServiceImpl::Writeback(
     // if we have an output file, make sure the data persists on the disk
     fsync( outputFd );
     close( outputFd );
+  }
+
+  // crash the server if withCrashOnWrite_ is set
+  if ( withCrashOnWrite_ ) {
+    std::cerr << "Crashing the server on purpose" << std::endl;
+    std::terminate();
   }
   
   //TODO: This could silently fail, we aren't including its return in our response
