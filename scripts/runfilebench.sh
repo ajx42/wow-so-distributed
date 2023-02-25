@@ -63,11 +63,11 @@ do
     rm -rf $WowFSFileBenchPath
     runTest $Test $stdout_file $stderr_file
 
-    rm -rf $WowFSFileBenchPath
-    runTest $Test $stdout_file $stderr_file
+    #rm -rf $WowFSFileBenchPath
+    #runTest $Test $stdout_file $stderr_file
 
-    rm -rf $WowFSFileBenchPath
-    runTest $Test $stdout_file $stderr_file
+    #rm -rf $WowFSFileBenchPath
+    #runTest $Test $stdout_file $stderr_file
 done
 
 python3 ./scripts/parseFileBench.py $stdout_file

@@ -25,11 +25,22 @@ this is a sample
 file
 EOF
 
+#cat << EOF > /tmp/wowfs_remote/sample.file.wow
+#this is a sample tmp
+#file, you shouldn't see me!
+#EOF
+
 cat << EOF > /tmp/wowfs_remote/subdir/other.file
 this is a 
 second sample
 file
 EOF
+
+#cat << EOF > /tmp/wowfs_remote/subdir/other.file.wow
+#this is a 
+#second sample tmp
+#file. You shouldn't see me either!
+#EOF
 
 #Mount FUSE fs.
 ./build/wowFS/unreliablefs/wowfs /tmp/wowfs -basedir=/tmp/wowfs_local -seed=1618680646 -d

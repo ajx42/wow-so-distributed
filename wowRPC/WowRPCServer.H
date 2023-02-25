@@ -82,7 +82,7 @@ grpc::Status WowFSServiceImpl::TestCall(
 }
 
 grpc::Status WowFSServiceImpl::DownloadStat(
-    grpc::ServerContext* context, const wowfs::DownloadRequest* request, 
+    grpc::ServerContext* , const wowfs::DownloadRequest* request, 
     grpc::ServerWriter<wowfs::DownloadResponse>* writer)
 {
     //Run lstat operation
@@ -100,7 +100,7 @@ grpc::Status WowFSServiceImpl::DownloadStat(
 }
 
 grpc::Status WowFSServiceImpl::ReadFile(
-    grpc::ServerContext* context, const wowfs::StreamReadRequest* request,
+    grpc::ServerContext*, const wowfs::StreamReadRequest* request,
     grpc::ServerWriter<wowfs::StreamReadResponse>* writer )
 {
   wowfs::StreamReadResponse response;
@@ -145,7 +145,7 @@ grpc::Status WowFSServiceImpl::ReadFile(
 }
 
 #ifdef HAVE_XATTR
-grpc::Status WowFSServiceImpl::GetXAttr(grpc::ServerContext* context, const wowfs::GetXAttrRequest* request, 
+grpc::Status WowFSServiceImpl::GetXAttr(grpc::ServerContext*, const wowfs::GetXAttrRequest* request, 
           grpc::ServerWriter<wowfs::DownloadResponse>* writer)
 {
     int res;
@@ -170,7 +170,7 @@ grpc::Status WowFSServiceImpl::GetXAttr(grpc::ServerContext* context, const wowf
 }
 #endif
 
-grpc::Status WowFSServiceImpl::Access(grpc::ServerContext* context,
+grpc::Status WowFSServiceImpl::Access(grpc::ServerContext*,
          const wowfs::AccessRequest* request, wowfs::AccessResponse* response)
 {
     //Run access operation
@@ -183,11 +183,11 @@ grpc::Status WowFSServiceImpl::Access(grpc::ServerContext* context,
 }
 
 grpc::Status WowFSServiceImpl::Mkdir(
-    grpc::ServerContext* context, const wowfs::MkdirRequest* request,
+    grpc::ServerContext*, const wowfs::MkdirRequest* request,
     wowfs::MkdirResponse* response)
 {
     //Run mkdir operation
-    mode_t mode = request->mode();
+    //mode_t mode = request->mode();
     int ret = mkdir((this->basedir_ + request->dir_name()).c_str(), 0777);
     response->set_ret(ret);
     response->set_server_errno(errno);
@@ -196,7 +196,7 @@ grpc::Status WowFSServiceImpl::Mkdir(
 }
 
 grpc::Status WowFSServiceImpl::Rmdir(
-    grpc::ServerContext* context, const wowfs::RmdirRequest* request,
+    grpc::ServerContext*, const wowfs::RmdirRequest* request,
     wowfs::RmdirResponse* response)
 {
     //Run rmdir operation
@@ -208,7 +208,7 @@ grpc::Status WowFSServiceImpl::Rmdir(
 }
 
 grpc::Status WowFSServiceImpl::Open(
-    grpc::ServerContext* context, const wowfs::OpenRequest* request,
+    grpc::ServerContext*, const wowfs::OpenRequest* request,
     wowfs::OpenResponse* response)
 {
     //Run open operation
@@ -220,7 +220,7 @@ grpc::Status WowFSServiceImpl::Open(
 }
 
 grpc::Status WowFSServiceImpl::Create(
-    grpc::ServerContext* context, const wowfs::CreateRequest* request,
+    grpc::ServerContext*, const wowfs::CreateRequest* request,
     wowfs::CreateResponse* response)
 {
     //Run open operation
@@ -233,26 +233,37 @@ grpc::Status WowFSServiceImpl::Create(
 }
 
 grpc::Status WowFSServiceImpl::Writeback(
-    grpc::ServerContext* context, grpc::ServerReader<wowfs::StreamWriteRequest>* reader,
+    grpc::ServerContext*, grpc::ServerReader<wowfs::StreamWriteRequest>* reader,
     wowfs::StreamWriteResponse* response)
 {
   int64_t numBytesWritten = 0;
   int outputFd = -1;
   wowfs::StreamWriteRequest req;
+
+  //First write file to tmpPath, then rename() to finalPath
+  std::string finalPath;
+  std::string tmpPath;
+  
   while ( reader->Read( &req ) ) {
+
+      finalPath = this->basedir_ + req.path();
+      tmpPath = finalPath + ".wow";
+
     if ( outputFd == -1 ) {
       // there may be a case when a file is deleted on the server, while another user
       // writes back to it later, therefore we should create a file if it doesn't exist
-      outputFd = open( (this->basedir_ + req.path()).c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0777 );
+      outputFd = open( tmpPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0777 );
       if ( outputFd == -1 ) {
         // something went wrong
         response->set_ret( -1 );
         response->set_server_errno( errno );
         return grpc::Status::OK;
       }
-      std::cerr << "file opened for writing: " << this->basedir_ + req.path() << std::endl;
+      std::cerr << "file opened for writing: " << tmpPath << std::endl;
     }
     auto res = pwrite( outputFd, req.buf().data(), req.size(), req.offset() );
+
+    //TODO: What do we do with tmp file on failed write?
     if ( res == -1 ) {
       response->set_ret( -1 );
       response->set_server_errno( errno );
@@ -265,6 +276,11 @@ grpc::Status WowFSServiceImpl::Writeback(
     fsync( outputFd );
     close( outputFd );
   }
+  
+  //TODO: This could silently fail, we aren't including its return in our response
+  std::cerr << "Write complete, renaming file" << std::endl;
+  rename(tmpPath.c_str(), finalPath.c_str());
+
   std::cerr << "writes completed, # bytes written: " << numBytesWritten << std::endl;
   response->set_ret( numBytesWritten );
   response->set_server_errno( 0 );
@@ -272,7 +288,7 @@ grpc::Status WowFSServiceImpl::Writeback(
 }
 
 grpc::Status WowFSServiceImpl::ReadDir(
-    grpc::ServerContext* context, const wowfs::StreamReadRequest* request,
+    grpc::ServerContext*, const wowfs::StreamReadRequest* request,
     grpc::ServerWriter<wowfs::StreamReadResponse>* writer )
 {
   wowfs::StreamReadResponse response;
@@ -310,7 +326,7 @@ grpc::Status WowFSServiceImpl::ReadDir(
   }
   return grpc::Status::OK;
 }
-grpc::Status WowFSServiceImpl::Unlink(grpc::ServerContext* context, const wowfs::UnlinkRequest* request, 
+grpc::Status WowFSServiceImpl::Unlink(grpc::ServerContext*, const wowfs::UnlinkRequest* request, 
                       wowfs::UnlinkResponse* response) 
 {
     int ret = unlink((this->basedir_ + request->path()).c_str());
@@ -320,7 +336,7 @@ grpc::Status WowFSServiceImpl::Unlink(grpc::ServerContext* context, const wowfs:
     return grpc::Status::OK;
 }
 
-grpc::Status WowFSServiceImpl::Rename(grpc::ServerContext* context, const wowfs::RenameRequest* request, 
+grpc::Status WowFSServiceImpl::Rename(grpc::ServerContext*, const wowfs::RenameRequest* request, 
                       wowfs::RenameResponse* response) 
 {
     int ret = rename(
@@ -332,7 +348,7 @@ grpc::Status WowFSServiceImpl::Rename(grpc::ServerContext* context, const wowfs:
     return grpc::Status::OK;
 }
 
-grpc::Status WowFSServiceImpl::Link(grpc::ServerContext* context, const wowfs::LinkRequest* request,
+grpc::Status WowFSServiceImpl::Link(grpc::ServerContext*, const wowfs::LinkRequest* request,
                       wowfs::LinkResponse* response)
 {
     int ret = link(
@@ -344,7 +360,7 @@ grpc::Status WowFSServiceImpl::Link(grpc::ServerContext* context, const wowfs::L
     return grpc::Status::OK;
 }
 
-grpc::Status WowFSServiceImpl::Symlink(grpc::ServerContext* context, const wowfs::SymlinkRequest* request,
+grpc::Status WowFSServiceImpl::Symlink(grpc::ServerContext*, const wowfs::SymlinkRequest* request,
                       wowfs::SymlinkResponse* response)
 {
     int ret = symlink(
