@@ -4,8 +4,11 @@
 #include <dirent.h>
 
 #include <fstream>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
 
-
+// Note this method is only used for Testing
 int32_t WowRPCClient::Ping( int32_t cmd )
 {
   wowfs::Cmd msg; msg.set_sup( cmd );
@@ -21,6 +24,29 @@ int32_t WowRPCClient::Ping( int32_t cmd )
     std::cerr << "RPC Failed" << std::endl;
     return -1;
   }
+}
+
+// Note this method is only used for Testing
+void WowRPCClient::PerformSpeedTest( int32_t identifier, int64_t msgSize )
+{
+  grpc::ClientContext context;
+  wowfs::SpeedTestRequest req;
+  wowfs:: Ack reply;
+
+  req.set_identifier( identifier );
+  std::string data(msgSize, '0');
+  req.set_data( data );
+  
+  auto t_start = std::chrono::high_resolution_clock::now();
+  auto status = stub_->SpeedTest( &context, req, &reply );
+  auto t_end = std::chrono::high_resolution_clock::now();
+
+  std::cout   << "Size=" << msgSize <<"|"
+              << "Status=" << status.ok() << "|"
+              << std::fixed << std::setprecision(10)
+              << "WallClockTime(us)="
+              << std::chrono::duration<double, std::micro>(t_end-t_start).count()
+              << std::endl;
 }
 
 //Download struct stat from server for given filepath.

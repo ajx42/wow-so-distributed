@@ -71,6 +71,10 @@ public:
                     wowfs::LinkResponse*);
   grpc::Status Symlink(grpc::ServerContext*, const wowfs::SymlinkRequest*, 
                        wowfs::SymlinkResponse*);
+  
+  // -- the below is created for Consistency Option A (A-B) testing
+  grpc::Status SpeedTest(grpc::ServerContext*, const wowfs::SpeedTestRequest*,
+                         wowfs::Ack*);
 };
 
 grpc::Status WowFSServiceImpl::TestCall( 
@@ -371,3 +375,11 @@ grpc::Status WowFSServiceImpl::Symlink(grpc::ServerContext*, const wowfs::Symlin
 
     return grpc::Status::OK;
 }
+
+grpc::Status WowFSServiceImpl::SpeedTest(grpc::ServerContext* context, const wowfs::SpeedTestRequest* request,
+                                         wowfs::Ack* response)
+{
+  printf("received data from id=%d", request->identifier());
+  return grpc::Status::OK;
+}
+

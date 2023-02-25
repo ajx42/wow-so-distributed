@@ -181,7 +181,14 @@ inline bool WowCacheManager::readFile( int32_t fd, std::string& buf ) {
   }
 
   lseek( readFd, 0, SEEK_SET );
+#ifdef __APPLE__
+  // Note: OSX does't have an lseek64, so we will need to stay on lseek.
+  // This is somewhat dangerous as sizes exceeding 32-bit integers can
+  // overflow. But I don't want to fix it for now.
+  auto size = lseek( readFd, 0, SEEK_END );
+#else
   off64_t size = lseek64( readFd, 0, SEEK_END );
+#endif
 
   if ( size == -1 ) {
     // lseek has failed for some reason

@@ -38,6 +38,8 @@ public:
   RPCResponse Rename( const std::string& old_path, const std::string& new_path );
   RPCResponse Link( const std::string& old_path, const std::string& new_path );
   RPCResponse Symlink( const std::string& target, const std::string& link_path );
+  
+  void PerformSpeedTest( int32_t identifier, int64_t msgSize );
 private:
   std::unique_ptr<wowfs::WowFS::Stub> stub_;
 };
