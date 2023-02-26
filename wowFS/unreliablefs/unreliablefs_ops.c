@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <signal.h>
 
 #include <sys/ioctl.h>
 #include <sys/file.h>
@@ -25,6 +26,49 @@
 #include <fstream>
 #include <string>
 #include <vector>
+
+#include <random>
+#include <algorithm>
+
+const std::string WOW_KILL_PHRASE = "__WOW_KILL__";
+
+//Shuffle given vector
+template<typename Object>
+void fisherYatyyesShuffle(std::vector<Object>& vec) {
+    // Use a random number generator to shuffle the elements
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    
+    for (int i = vec.size() - 1; i > 0; --i) {
+        // Generate a random index between 0 and i (inclusive)
+        std::uniform_int_distribution<int> dist(0, i);
+        int j = dist(gen);
+        
+        // Swap the elements at indices i and j
+        std::swap(vec[i], vec[j]);
+    }
+}
+
+//Record arguments to write operation
+class WRITE_OP{
+    public:
+        std::string path;
+        std::string buf;
+        size_t size;
+        off_t offset;
+        struct fuse_file_info fi;
+        WRITE_OP(std::string path, std::string buf, size_t size, off_t offset, struct fuse_file_info * fi)
+        {
+            this->path = std::string(path);
+            this->buf = std::string(buf);
+            this->size = size;
+            this->offset = offset;
+            this->fi = *fi;
+        }
+};
+
+//Queue of pending writes
+std::vector<WRITE_OP> WRITE_QUEUE;
 
 const char *fuse_op_name[] = {
     "getattr",
@@ -507,19 +551,11 @@ int unreliable_read(const char *path, char *buf, size_t size, off_t offset,
     return ret;
 }
 
-int unreliable_write(const char *path, const char *buf, size_t size,
+//Execute write through WowFS
+int wow_write(const char *path, const char *buf, size_t size,
                      off_t offset, struct fuse_file_info *fi)
 {
-    LogInfo("write: " + std::string(path));
-
-    int ret = error_inject(path, OP_WRITE);
-    if (ret == -ERRNO_NOOP) {
-        return 0;
-    } else if (ret) {
-        return ret;
-    }
-
-    int fd;
+    int fd, ret;
     (void) fi;
     if(fi == NULL) {
 	    fd = open(path, O_WRONLY);
@@ -536,7 +572,6 @@ int unreliable_write(const char *path, const char *buf, size_t size,
         ret = -errno;
     }
 
-
     if(fi == NULL) {
         close(fd);
     } else {
@@ -546,6 +581,25 @@ int unreliable_write(const char *path, const char *buf, size_t size,
     }
 
     return ret;
+}
+
+int unreliable_write(const char *path, const char *buf, size_t size,
+                     off_t offset, struct fuse_file_info *fi)
+{
+    LogInfo("write: " + std::string(path));
+
+    int ret = error_inject(path, OP_WRITE);
+    if (ret == -ERRNO_NOOP) {
+        return 0;
+    } else if (ret) {
+        return ret;
+    }
+
+    WRITE_QUEUE.push_back(WRITE_OP(path, buf, size, offset, fi));
+
+    //Let application think we performed the write
+    return size;
+    //return wow_write(path, buf, size, offset, fi);
 }
 
 int unreliable_statfs(const char *path, struct statvfs *buf)
@@ -576,6 +630,20 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
         return 0;
     } else if (ret) {
         return ret;
+    }
+
+    //Shuffle pending writes for out-of-order property
+    fisherYatyyesShuffle(WRITE_QUEUE);
+
+    for(auto op : WRITE_QUEUE)
+    {
+        LogWarn("Writing : " + op.buf);
+        if(op.buf == WOW_KILL_PHRASE)
+        {
+            LogError("Kill phrase detected, goodbye...");
+            raise(SIGSEGV);
+        }
+        wow_write(op.path.c_str(), op.buf.c_str(), op.size, op.offset, &op.fi);
     }
 
     // Note: When a file is closed the _release(...) is called async'ly
