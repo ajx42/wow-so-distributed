@@ -26,6 +26,7 @@
 #include "WowLocalWriteReorder.H"
 #include "unreliablefs_ops.h"
 #include "WowLogger.H"
+#include "WowCloseQueue.H"
 #include <fstream>
 #include <string>
 #include <vector>
@@ -415,7 +416,10 @@ int unreliable_truncate(const char *path, off_t length)
 int unreliable_open(const char *path, struct fuse_file_info *fi)
 {
     LogInfo("open: " + std::string(path));
- 
+
+    // we need to perform any pending close ops for this file
+    WowCloseQueue::Instance().onFileOp( path );
+
     int ret = error_inject(path, OP_OPEN);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -631,7 +635,14 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
     return 0;
 }
 
-int unreliable_release(const char *path, struct fuse_file_info *fi)
+int unreliable_release( const char* path, struct fuse_file_info* fi )
+{
+  LogInfo("release/queue: " + std::string( path ));
+  WowCloseQueue::Instance().addNewClose( path, *fi );
+  return 0;
+}
+
+int unreliable_release_impl(const char *path, struct fuse_file_info *fi)
 {
     LogInfo("release: " + std::string(path));
     
