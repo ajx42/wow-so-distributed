@@ -1,5 +1,6 @@
 #include <iostream>
 #include "WowRPCServer.H"
+#include "argparse/argparse.hpp"
 
 //Remove partially written files
 void CleanTmpFiles(const char* path, const char* extension) {
@@ -36,15 +37,37 @@ void CleanTmpFiles(const char* path, const char* extension) {
     closedir(dir);
 }
 
-int main()
+int main( int argc, char** argv )
 {
+  //Parse command line arguments
+  argparse::ArgumentParser program("server");
+  program.add_argument("--withCrashOnWrite")
+    .help("Crash the server when a write is requested.")
+    .default_value(false)
+    .implicit_value(true);
+
+  try {
+    program.parse_args( argc, argv );
+  }
+  catch (const std::runtime_error& err) {
+    std::cerr << err.what() << std::endl;
+    std::cerr << program;
+    std::exit(1);
+  }
+
+  auto withCrashOnWrite = program.get<bool>("--withCrashOnWrite");
+  if (withCrashOnWrite) {
+    std::cout << "Server will crash on write.\n";
+  }
+  
+
   //If we crashed, clean up any partially written files
   //This may report an error with our current testing script
   //since we start the server before directories are created.
   CleanTmpFiles("/tmp/wowfs_remote", ".wow");
 
   std::string server_addr("0.0.0.0:50051");
-  WowFSServiceImpl service("/tmp/wowfs_remote");
+  WowFSServiceImpl service("/tmp/wowfs_remote", withCrashOnWrite);
 
   grpc::EnableDefaultHealthCheckService( true );
   grpc::reflection::InitProtoReflectionServerBuilderPlugin();

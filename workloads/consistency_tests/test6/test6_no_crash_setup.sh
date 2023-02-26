@@ -1,0 +1,16 @@
+#!/bin/bash
+
+sudo ~/wow-so-distributed/scripts/cleanup.sh 
+
+#Make local and remote mirror directories
+mkdir /tmp/wowfs
+mkdir /tmp/wowfs_local
+
+chmod 777 /tmp/wowfs
+chmod 777 /tmp/wowfs_local
+
+rm /tmp/wowfs_local/unreliablefs.conf
+
+#Mount FUSE fs.
+~/wow-so-distributed/build/wowFS/unreliablefs/wowfs /tmp/wowfs -basedir=/tmp/wowfs_local -seed=1618680646 -server_address=c220g1-030827.wisc.cloudlab.us:50051 -d
+

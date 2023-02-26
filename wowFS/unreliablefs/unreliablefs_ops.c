@@ -20,6 +20,7 @@
 #endif
 
 #define ERRNO_NOOP -999
+#define ERRNO_WOW_CRASH -998
 
 #include "WowLocalWriteReorder.H"
 #include "unreliablefs_ops.h"
@@ -489,6 +490,8 @@ int unreliable_read(const char *path, char *buf, size_t size, off_t offset,
     int ret = error_inject(path, OP_READ);
     if (ret == -ERRNO_NOOP) {
         return 0;
+    } else if (ret == -ERRNO_WOW_CRASH) {
+        std::terminate();
     } else if (ret) {
         return ret;
     }
@@ -607,8 +610,9 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
         WowLocalWriteReorder::Instance().Shuffle();
     } else if ( ret == -WOW_REORDER_WRITEBACK_ERROR ) {
         delayWriteback = true;
-    } 
-    else if (ret) {
+    } else if (ret == -ERRNO_WOW_CRASH) {
+        std::terminate();
+    } else if (ret) {
         return ret;
     }
 
@@ -636,7 +640,9 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
         WowWritebackReorderManager::Instance().addNewWriteback(
           path, *fi, false );
       } else { // otherwise we just writeback as usual
-        WowManager::Instance().writebackToServer( path, fi->fh );
+        if ( ! WowManager::Instance().writebackToServer( path, fi->fh ) ) {
+            return -1; // if we have reached here, this means the writeback has failed
+        }
       }
     }
     
@@ -658,6 +664,8 @@ int unreliable_release( const char* path, struct fuse_file_info* fi )
     } else if ( ret == -WOW_REORDER_WRITEBACK_ERROR ){
       WowWritebackReorderManager::Instance().addNewWriteback( path, *fi, true );
       return 0;
+    } else if (ret == -ERRNO_WOW_CRASH) {
+        std::terminate();
     } else if (ret) {
         return ret;
     }
@@ -980,6 +988,9 @@ int unreliable_fsyncdir(const char *path, int datasync, struct fuse_file_info *f
 
 void *unreliable_init(struct fuse_conn_info *conn)
 {
+    struct unreliablefs_config *cfg = (struct unreliablefs_config *) fuse_get_context()->private_data;
+    std::cout << "unreliable_init: " << cfg->server_address << std::endl;
+    WowManager::Init(cfg->server_address);
     return NULL;
 }
 

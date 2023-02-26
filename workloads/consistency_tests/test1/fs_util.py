@@ -113,12 +113,12 @@ def start_another_client(host: str, test_case: int, client_id: str,
     send_signal(host, signal_fname)
     signal_exists = (not poll_signal_remove(host, signal_fname))
     assert signal_exists
-    script_name = f'~/wow-so-distributed/workloads/consistency_tests/test{test_case}_client{client_id.upper()}.py'
-    ssh_cmd = f'source ~/wow-so-distributed/workloads/consistency_tests/739p1.env && python {script_name}'
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     username = getpass.getuser()
     home_dir = os.path.expanduser('~')
+    script_name = f'{home_dir}/wow-so-distributed/workloads/consistency_tests/test1/test{test_case}_client{client_id.upper()}.py'
+    ssh_cmd = f'source {home_dir}/wow-so-distributed/workloads/consistency_tests/test1/739p1.env && python {script_name}'
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     print(username)
     print(home_dir)
     assert username is not None
@@ -127,10 +127,10 @@ def start_another_client(host: str, test_case: int, client_id: str,
     client.connect(hostname=host, username=username, key_filename=sshkey_fname)
     stdin, stdout, stderr = client.exec_command(ssh_cmd)
     # useful when connection init has issues
-    #print(stdout.readlines())
-    #print(stderr.readlines())
-    #client.close()
-    #print(ssh_cmd)
+    # print(stdout.readlines())
+    # print(stderr.readlines())
+    # client.close()
+    # print(ssh_cmd)
 
 
 def send_signal(host: str, signal_fname: str):
@@ -173,7 +173,6 @@ def mkdir(dir_name: str):
 
 def delete_file(fname: str):
     ret = os.unlink(fname)
-    assert ret == 0
 
 
 def stat_file(fname: str) -> os.stat_result:
