@@ -2,5 +2,6 @@ build
 .vscode
 __pycache__
 testResults
+testResults_build
 reorder
 reorder.txt

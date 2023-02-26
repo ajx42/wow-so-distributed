@@ -15,12 +15,12 @@ chmod 777 /tmp/wowfs_remote/subdir
 chmod 777 /tmp/wowfs_remote/durability
 
 #Write config file
-cat << EOF > /tmp/wowfs_local/unreliablefs.conf
-[errinj_wow_reorder_local]
-op_regexp = .*
-path_regexp = .*
-probability = 100
-EOF
+#cat << EOF > /tmp/wowfs_local/unreliablefs.conf
+#[errinj_wow_reorder_local]
+#op_regexp = .*
+#path_regexp = .*
+#probability = 100
+#EOF
 
 #cat << EOF > /tmp/wowfs_local/unreliablefs.conf
 #[errinj_wow_reorder_server]
@@ -35,21 +35,21 @@ EOF
 #probability = 90
 #EOF
 
-cat << EOF > /tmp/wowfs_remote/sample.file
-this is a sample
-file
-EOF
+#cat << EOF > /tmp/wowfs_remote/sample.file
+#this is a sample
+#file
+#EOF
 
 #cat << EOF > /tmp/wowfs_remote/sample.file.wow
 #this is a sample tmp
 #file, you shouldn't see me!
 #EOF
 
-cat << EOF > /tmp/wowfs_remote/subdir/other.file
-this is a 
-second sample
-file
-EOF
+#cat << EOF > /tmp/wowfs_remote/subdir/other.file
+#this is a 
+#second sample
+#file
+#EOF
 
 #cat << EOF > /tmp/wowfs_remote/subdir/other.file.wow
 #this is a 
