@@ -200,7 +200,11 @@ int error_inject(const char* path, fuse_op operation)
 	}
         LogWarn("errinj " + std::string(errinj_name[err->type]) + " triggered on operation " + std::string(op_name) + " " + path);
 	switch (err->type) {
-        case ERRINJ_WOW_REORDER:
+        case ERRINJ_WOW_REORDER_LOCAL:
+        {
+            break;
+        }
+        case ERRINJ_WOW_REORDER_SERVER:
         {
             break;
         }

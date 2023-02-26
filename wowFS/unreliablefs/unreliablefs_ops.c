@@ -21,6 +21,7 @@
 
 #define ERRNO_NOOP -999
 
+#include "WowLocalWriteReorder.H"
 #include "unreliablefs_ops.h"
 #include "WowLogger.H"
 #include <fstream>
@@ -30,45 +31,6 @@
 #include <random>
 #include <algorithm>
 
-const std::string WOW_KILL_PHRASE = "__WOW_KILL__";
-
-//Shuffle given vector
-template<typename Object>
-void fisherYatyyesShuffle(std::vector<Object>& vec) {
-    // Use a random number generator to shuffle the elements
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    
-    for (int i = vec.size() - 1; i > 0; --i) {
-        // Generate a random index between 0 and i (inclusive)
-        std::uniform_int_distribution<int> dist(0, i);
-        int j = dist(gen);
-        
-        // Swap the elements at indices i and j
-        std::swap(vec[i], vec[j]);
-    }
-}
-
-//Record arguments to write operation
-class WRITE_OP{
-    public:
-        std::string path;
-        std::string buf;
-        size_t size;
-        off_t offset;
-        struct fuse_file_info fi;
-        WRITE_OP(std::string path, std::string buf, size_t size, off_t offset, struct fuse_file_info * fi)
-        {
-            this->path = std::string(path);
-            this->buf = std::string(buf);
-            this->size = size;
-            this->offset = offset;
-            this->fi = *fi;
-        }
-};
-
-//Queue of pending writes
-std::vector<WRITE_OP> WRITE_QUEUE;
 
 const char *fuse_op_name[] = {
     "getattr",
@@ -595,7 +557,7 @@ int unreliable_write(const char *path, const char *buf, size_t size,
         return ret;
     }
 
-    WRITE_QUEUE.push_back(WRITE_OP(path, buf, size, offset, fi));
+    WowLocalWriteReorder::Instance().RecordWrite(path, buf, size, offset, fi);
 
     //Let application think we performed the write
     return size;
@@ -633,9 +595,9 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
     }
 
     //Shuffle pending writes for out-of-order property
-    fisherYatyyesShuffle(WRITE_QUEUE);
+    WowLocalWriteReorder::Instance().Shuffle();
 
-    for(auto op : WRITE_QUEUE)
+    for(auto op : *(WowLocalWriteReorder::Instance().GetQueue()))
     {
         LogWarn("Writing : " + op.buf);
         if(op.buf == WOW_KILL_PHRASE)
