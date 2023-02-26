@@ -44,9 +44,6 @@ def run_test():
     read_str = os.read(fd, 32768).decode('utf-8')
     utils.check_read_content(read_str, "0"*32768)
 
-    # shut down server
-    server_ssh_client.exec_command(f"kill -9 $(pgrep -f wowRPC/server)")
-
     # signal client_B
     b_ssh_client.exec_command(f"rm {INFO.b_signal}")
     b_ssh_client.exec_command(
@@ -63,6 +60,9 @@ def run_test():
             break
     print('Client b finished')
     
+    # shut down server
+    server_ssh_client.exec_command(f"kill -9 $(pgrep -f wowRPC/server)")
+
     logging.info("OK")
 
 if __name__ == '__main__':
