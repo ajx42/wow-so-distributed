@@ -20,6 +20,7 @@
 #endif
 
 #define ERRNO_NOOP -999
+#define ERRNO_WOW_CRASH -998
 
 #include "WowLocalWriteReorder.H"
 #include "unreliablefs_ops.h"
@@ -489,6 +490,8 @@ int unreliable_read(const char *path, char *buf, size_t size, off_t offset,
     int ret = error_inject(path, OP_READ);
     if (ret == -ERRNO_NOOP) {
         return 0;
+    } else if (ret == -ERRNO_WOW_CRASH) {
+        std::terminate();
     } else if (ret) {
         return ret;
     }
@@ -660,6 +663,8 @@ int unreliable_release( const char* path, struct fuse_file_info* fi )
     } else if ( ret == -WOW_REORDER_WRITEBACK_ERROR ){
       WowWritebackReorderManager::Instance().addNewWriteback( path, *fi, true );
       return 0;
+    } else if (ret == -ERRNO_WOW_CRASH) {
+        std::terminate();
     } else if (ret) {
         return ret;
     }

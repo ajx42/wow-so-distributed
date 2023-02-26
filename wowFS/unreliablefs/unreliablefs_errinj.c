@@ -227,6 +227,11 @@ int error_inject(const char* path, fuse_op operation)
             }
             break;
         }
+        case ERRINJ_WOW_CRASH:
+        {
+            rc = -ERRNO_WOW_CRASH;
+            break;
+        }
         case ERRINJ_NOOP:
         {
             rc = -ERRNO_NOOP;

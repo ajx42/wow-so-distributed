@@ -22,6 +22,7 @@
 #define MIN_PROBABLITY 0
 #define MAX_PROBABLITY 100
 #define ERRNO_NOOP -999
+#define ERRNO_WOW_CRASH -998
 #define DEFAULT_SIGNAL_NAME SIGKILL
 
 int error_inject(const char* path, fuse_op operation);
@@ -40,6 +41,7 @@ const char *errinj_name[] =
     "errinj_wow_reorder_local",
     "errinj_wow_reorder_server",
     "errinj_wow_delay",
+    "errinj_wow_crash"
 };
 
 typedef enum {
@@ -50,6 +52,7 @@ typedef enum {
     ERRINJ_WOW_REORDER_LOCAL,
     ERRINJ_WOW_REORDER_SERVER,
     ERRINJ_WOW_DELAY,
+    ERRINJ_WOW_CRASH
 } errinj_type;
 
 typedef struct errinj_conf errinj_conf;
