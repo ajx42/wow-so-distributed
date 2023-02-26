@@ -20,6 +20,7 @@
 #endif
 
 #define ERRNO_NOOP -999
+#define WOW_REORDER_LOCAL_ERROR 15
 
 #include "WowLocalWriteReorder.H"
 #include "unreliablefs_ops.h"
@@ -590,12 +591,15 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
     int ret = error_inject(path, OP_FLUSH);
     if (ret == -ERRNO_NOOP) {
         return 0;
-    } else if (ret) {
+    }
+    else if(ret == -WOW_REORDER_LOCAL_ERROR ) {
+        //Shuffle pending writes for out-of-order property
+        LogWarn("Running write shuffle");
+        WowLocalWriteReorder::Instance().Shuffle();
+    }else if (ret) {
         return ret;
     }
 
-    //Shuffle pending writes for out-of-order property
-    WowLocalWriteReorder::Instance().Shuffle();
 
     for(auto op : *(WowLocalWriteReorder::Instance().GetQueue()))
     {
