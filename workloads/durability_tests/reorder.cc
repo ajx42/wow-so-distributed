@@ -7,13 +7,23 @@ using namespace std;
 //Cause a crash in FUSE if written
 const std::string WOW_KILL_PHRASE = "__WOW_KILL__";
 
+string MESSAGE_ARRAY [] = 
+{
+	"Value A\n",
+	"Value B\n",
+	"Value C\n",
+	"Value D\n",
+	"Value E\n",
+	"Value F\n",
+	"Value G\n",
+	"Commit\n",
+	WOW_KILL_PHRASE,
+};
+
 int main()
 {
-	//string FILE_PATH = "./reorder.txt";
+	//File we are writing to
 	string FILE_PATH = "/tmp/wowfs/durability/reorder.txt";
-	string MESSAGE_A = "Value A\n";
-	string MESSAGE_B = "Value B\n";
-	string MESSAGE_C = "COMMIT\n";
 
 	int fd = open(FILE_PATH.c_str(), O_CREAT | O_WRONLY, 0777);
 
@@ -22,22 +32,23 @@ int main()
 		printf("Open failed : %d\n", errno);
 	}
 
-	ftruncate(fd, MESSAGE_A.size() + MESSAGE_B.size() + MESSAGE_C.size());
+	//Resize file to fit all data	
+	int sum = 0;
+	for(auto m : MESSAGE_ARRAY)
+	{
+		sum+=m.size();
+	}
+
+	ftruncate(fd, sum);
 	fsync(fd);
 
+	//Position write data, WOW_KILL_PHRASE will cause a crash in FUSE
 	int offset = 0;
-
-	pwrite(fd, MESSAGE_A.c_str(), MESSAGE_A.size(), offset);
-	offset+=MESSAGE_A.size();
-
-	pwrite(fd, MESSAGE_B.c_str(), MESSAGE_B.size(), offset);
-	offset+=MESSAGE_B.size();
-
-	pwrite(fd, MESSAGE_C.c_str(), MESSAGE_C.size(), offset);
-	offset+=MESSAGE_C.size();
-
-	pwrite(fd, WOW_KILL_PHRASE.c_str(), WOW_KILL_PHRASE.size(), offset);
-	offset+=WOW_KILL_PHRASE.size();
+	for(auto m : MESSAGE_ARRAY)
+	{
+		pwrite(fd, m.c_str(), m.size(), offset);
+		offset+=m.size();
+	}
 
 	close(fd);
 
