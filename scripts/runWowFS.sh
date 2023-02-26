@@ -6,7 +6,7 @@ rm /tmp/logs.unreliable.txt
 tmux new-session -d -s my_session
 tmux split-window -h
 
-tmux send-keys -t 0 "../build/wowRPC/server" C-m
+tmux send-keys -t 0 "./build/wowRPC/server" C-m
 
 tmux split-window -v -t 0
 

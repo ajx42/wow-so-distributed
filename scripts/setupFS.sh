@@ -58,7 +58,7 @@ EOF
 #EOF
 
 #Mount FUSE fs.
-../build/wowFS/unreliablefs/wowfs /tmp/wowfs -basedir=/tmp/wowfs_local -seed=1618680646 -server_address=c220g1-030827.wisc.cloudlab.us:50051 -d
+./build/wowFS/unreliablefs/wowfs /tmp/wowfs -basedir=/tmp/wowfs_local -seed=1618680646 -server_address=c220g1-030827.wisc.cloudlab.us:50051 -d
 
 #Start up file server
 # ./build/wowRPC/server
