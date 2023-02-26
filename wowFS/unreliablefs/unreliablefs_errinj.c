@@ -174,9 +174,11 @@ int error_inject(const char* path, fuse_op operation)
     if (strcmp(path, conf.config_path) == 0) {
         config_delete(conf.errors);
         conf.errors = config_init(path);
+        LogWarn("No config set, going to cleanup.")
         goto cleanup;
     }
     if (!conf.errors) {
+        LogWarn("No config errors set, going to cleanup.")
         goto cleanup;
     }
 
@@ -184,24 +186,47 @@ int error_inject(const char* path, fuse_op operation)
     TAILQ_FOREACH(err, conf.errors, entries) {
         unsigned int p = rand_range(MIN_PROBABLITY, MAX_PROBABLITY);
         if (!(p <= err->probability)) {
-            fprintf(stderr, "errinj '%s' skipped: probability (%d) is not matched\n",
-                            errinj_name[err->type], err->probability);
+            LogWarn("errinj " + std::string(errinj_name[err->type]) + " skipped: probability (" + std::to_string(err->probability) + ") is not matched");
             continue;
         }
         const char* op_name = fuse_op_name[operation];
 	if (is_regex_matched(err->path_regexp, path) != 0) {
-	    fprintf(stderr, "errinj '%s' skipped: path_regexp (%s) is not matched\n",
-                            errinj_name[err->type], err->path_regexp);
+        LogWarn("errinj " + std::string(errinj_name[err->type]) + " skipped: path_regexp (" + std::string(err->path_regexp) + ") is not matched");
 	    continue;
 	}
 	if (is_regex_matched(err->op_regexp, op_name) != 0) {
-	    fprintf(stderr, "errinj '%s' skipped: op_regexp (%s) is not matched\n",
-                            errinj_name[err->type], err->op_regexp);
+        LogWarn("errinj " + std::string(errinj_name[err->type]) + " skipped: op_regexp (" + std::string(err->op_regexp) + ") is not matched");
 	    continue;
 	}
-        fprintf(stdout, "%s triggered on operation '%s', %s\n",
-                        errinj_name[err->type], op_name, path);
+        LogWarn("errinj " + std::string(errinj_name[err->type]) + " triggered on operation " + std::string(op_name) + " " + path);
 	switch (err->type) {
+        case ERRINJ_WOW_REORDER_LOCAL:
+        {
+            if ( operation == OP_FLUSH || operation == OP_WRITE )
+            {
+                rc = -WOW_REORDER_LOCAL_ERROR;
+            }
+            break;
+        }
+        case ERRINJ_WOW_REORDER_SERVER:
+        {
+            // @FIXME: ideally we should be also be handling renames and deletes
+            // but our little workload only involves these 3, so we are not going to handle
+            // anything else for now
+            if ( operation == OP_FLUSH || operation == OP_RELEASE || operation == OP_OPEN )
+            {
+              rc = -WOW_REORDER_WRITEBACK_ERROR;
+            }
+            break;
+        }
+        case ERRINJ_WOW_DELAY:
+        {
+            if(operation == OP_WRITE)
+            {
+                rc = -WOW_DELAY_ERROR;
+            }
+            break;
+        }
         case ERRINJ_NOOP:
         {
             rc = -ERRNO_NOOP;
@@ -260,7 +285,7 @@ static errinj_type errinj_type_by_name(const char *name)
 }
 
 struct err_inj_q *config_init(const char* conf_path) {
-    fprintf(stdout, "read configuration %s\n", conf_path);
+    LogInfo("read configuration " + std::string(conf_path));
     struct err_inj_q *errors = (err_inj_q*)calloc(1, sizeof(struct err_inj_q));
     if (!errors) {
         perror("calloc");
@@ -269,7 +294,7 @@ struct err_inj_q *config_init(const char* conf_path) {
     TAILQ_INIT(errors);  /* initialize queue */
     if (access(conf_path, F_OK ) == 0) {
         if (ini_parse(conf_path, conf_option_handler, errors) < 0) {
-            fprintf(stderr, "can't load '%s'\n", conf_path);
+            LogWarn("can't load " + std::string(conf_path));
             return NULL;
         }
     }

@@ -18,10 +18,13 @@ set(WOW_FS_EXEC "wowfs")
 set(WOW_RPC_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/wowRPC")
 set(WOW_FS_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/wowFS")
 set(WOW_AB_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/wowAB")
+set(WOW_DUR_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/durability")
 
 # include generated source files (proto)
 include_directories("${WOW_RPC_BINARY_DIR}")
 
+add_subdirectory(workloads/durability_tests "${WOW_DUR_BINARY_DIR}")
+message(STATUS "Using durability_tests via add_subdirectory")
 
 add_subdirectory(wowRPC "${WOW_RPC_BINARY_DIR}")
 message(STATUS "Using WowRPC via add_subdirectory.")

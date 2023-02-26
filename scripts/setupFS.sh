@@ -6,18 +6,33 @@ mkdir /tmp/wowfs
 mkdir /tmp/wowfs_local
 mkdir /tmp/wowfs_remote
 mkdir /tmp/wowfs_remote/subdir
+mkdir /tmp/wowfs_remote/durability
 
 chmod 777 /tmp/wowfs
 chmod 777 /tmp/wowfs_local
 chmod 777 /tmp/wowfs_remote
 chmod 777 /tmp/wowfs_remote/subdir
+chmod 777 /tmp/wowfs_remote/durability
 
 #Write config file
+cat << EOF > /tmp/wowfs_local/unreliablefs.conf
+[errinj_wow_reorder_local]
+op_regexp = .*
+path_regexp = .*
+probability = 100
+EOF
+
 #cat << EOF > /tmp/wowfs_local/unreliablefs.conf
-#[errinj_noop]
+#[errinj_wow_reorder_server]
 #op_regexp = .*
 #path_regexp = .*
-#probability = 0
+#probability = 100
+#EOF
+
+#[errinj_wow_delay]
+#op_regexp = .*
+#path_regexp = .*
+#probability = 90
 #EOF
 
 cat << EOF > /tmp/wowfs_remote/sample.file

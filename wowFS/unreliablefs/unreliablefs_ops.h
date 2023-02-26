@@ -26,6 +26,7 @@ int unreliable_write(const char *, const char *, size_t, off_t,
                      struct fuse_file_info *);
 int unreliable_statfs(const char *, struct statvfs *);
 int unreliable_flush(const char *, struct fuse_file_info *);
+int unreliable_release_impl(const char *path, struct fuse_file_info *fi);
 int unreliable_release(const char *, struct fuse_file_info *);
 int unreliable_fsync(const char *, int, struct fuse_file_info *);
 

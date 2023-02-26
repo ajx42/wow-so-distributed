@@ -10,7 +10,7 @@ tmux send-keys -t 0 "./build/wowRPC/server" C-m
 
 tmux split-window -v -t 0
 
-tmux send-keys -t 1 "./scripts/setup.sh" C-m
+tmux send-keys -t 1 "./scripts/setupFS.sh" C-m
 
 sleep 2
 

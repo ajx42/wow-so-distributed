@@ -10,6 +10,9 @@
 #include "WowCache.H"
 
 #define DEFAULT_CONF_NAME "unreliablefs.conf"
+#define WOW_REORDER_LOCAL_ERROR 15
+#define WOW_DELAY_ERROR 16
+#define WOW_REORDER_WRITEBACK_ERROR 17
 
 typedef struct unreliablefs_config {
      struct err_inj_q *errors;

@@ -37,6 +37,9 @@ const char *errinj_name[] =
     "errinj_kill_caller",
     "errinj_noop",
     "errinj_slowdown",
+    "errinj_wow_reorder_local",
+    "errinj_wow_reorder_server",
+    "errinj_wow_delay",
 };
 
 typedef enum {
@@ -44,6 +47,9 @@ typedef enum {
     ERRINJ_KILL_CALLER,
     ERRINJ_NOOP,
     ERRINJ_SLOWDOWN,
+    ERRINJ_WOW_REORDER_LOCAL,
+    ERRINJ_WOW_REORDER_SERVER,
+    ERRINJ_WOW_DELAY,
 } errinj_type;
 
 typedef struct errinj_conf errinj_conf;
