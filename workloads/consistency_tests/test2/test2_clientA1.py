@@ -1,8 +1,10 @@
 #! /usr/bin/env python3
 
 import os
-import utils
 import sys
+import pathlib
+sys.path.append(str(pathlib.Path(__file__).parent.parent.resolve()))
+import utils
 import time
 from pathlib import Path
 import logging
@@ -31,7 +33,7 @@ def run_test():
     # call A2
     print("Calling client A2")
     a2_ssh_client.exec_command(f"rm {INFO.a2_signal}")
-    a2_ssh_client.exec_command(
+    stdin, stdout, stderr = a2_ssh_client.exec_command(
         f"python {utils.get_script_path(INFO.TEST_SCRIPT_DIR, 'A2', INFO.TEST_CASE_NO)}"
         )
     a2_ssh_client.exec_command(f"touch {INFO.a2_signal}")

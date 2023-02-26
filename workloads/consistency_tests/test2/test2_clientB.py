@@ -2,9 +2,11 @@
 
 import logging
 import os
-import utils
 import sys
-import test5_info as INFO
+import pathlib
+sys.path.append(str(pathlib.Path(__file__).parent.parent.resolve()))
+import utils
+import test2_info as INFO
 import time
 '''
 This is ClientB.
@@ -21,15 +23,16 @@ def run_test():
             break
         time.sleep(1)
 
+    # open, read (should be all 0), close
+    # check in FNAME exists
     if not os.path.exists(INFO.FNAME):
         logging.info('FNAME not exist')
         sys.exit(1)
-    
-    # should have 0 size
-    stat = os.stat(INFO.FNAME)
-    if stat.st_size != 0:
-        logging.info(f"File not empty: size {stat.st_size}")
-        sys.exit(1)
+    fd = os.open(INFO.FNAME, os.O_RDONLY)
+    read_len = 32768
+    read_str = os.read(fd, read_len).decode('utf-8')
+    utils.check_read_content(read_str, '0' * read_len)
+    os.close(fd) # should not flush, as there is no writej
 
     # remove signal file
     os.remove(signal)

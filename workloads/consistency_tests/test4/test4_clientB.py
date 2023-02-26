@@ -2,8 +2,10 @@
 
 import logging
 import os
-import utils
 import sys
+import pathlib
+sys.path.append(str(pathlib.Path(__file__).parent.parent.resolve()))
+import utils
 import test4_info as INFO
 import time
 '''

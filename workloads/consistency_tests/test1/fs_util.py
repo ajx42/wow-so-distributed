@@ -29,8 +29,7 @@ def get_shell_cmd_output(
                           capture_output=True,
                           shell=True,
                           cwd=exec_dir,
-                          timeout=timeout_sec,
-                          close_fds=True)
+                          timeout=timeout_sec)
     outs = proc.stdout.decode(encoding="utf-8").splitlines()
     errs = proc.stderr.decode(encoding="utf-8").splitlines()
     return outs, errs, proc.returncode
@@ -114,12 +113,12 @@ def start_another_client(host: str, test_case: int, client_id: str,
     send_signal(host, signal_fname)
     signal_exists = (not poll_signal_remove(host, signal_fname))
     assert signal_exists
-    script_name = f'~/wow-so-distributed/workloads/consistency_tests/test{test_case}_client{client_id.upper()}.py'
-    ssh_cmd = f'source ~/wow-so-distributed/workloads/consistency_tests/739p1.env && python {script_name}'
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     username = getpass.getuser()
     home_dir = os.path.expanduser('~')
+    script_name = f'{home_dir}/wow-so-distributed/workloads/consistency_tests/test1/test{test_case}_client{client_id.upper()}.py'
+    ssh_cmd = f'source {home_dir}/wow-so-distributed/workloads/consistency_tests/test1/739p1.env && python {script_name}'
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     print(username)
     print(home_dir)
     assert username is not None

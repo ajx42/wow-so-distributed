@@ -1,8 +1,10 @@
 #! /usr/bin/env python3
 
 import os
-import utils
 import sys
+import pathlib
+sys.path.append(str(pathlib.Path(__file__).parent.parent.resolve()))
+import utils
 import time
 from pathlib import Path
 import logging

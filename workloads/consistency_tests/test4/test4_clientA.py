@@ -1,12 +1,14 @@
 #! /usr/bin/env python3
 
 import os
-import utils
 import sys
+import pathlib
+sys.path.append(str(pathlib.Path(__file__).parent.parent.resolve()))
+import utils
 import time
 from pathlib import Path
 import logging
-import test6_info as INFO
+import test4_info as INFO
 '''
 This is ClientA.
 '''
@@ -23,12 +25,13 @@ def run_test():
     os.mkdir(INFO.TEST_DATA_DIR)
     Path(INFO.FNAME).touch()
 
-    # write
     fd = os.open(INFO.FNAME, os.O_WRONLY)
-    os.write(fd, str.encode("0"*32768, 'utf-8'))
-    os.close(fd) 
+    os.write(fd, str.encode("W0M"*32768, 'utf-8'))
+    os.close(fd)
+    time.sleep(3)
 
-    # signal client B
+
+    # signal client_B
     b_ssh_client.exec_command(f"rm {INFO.b_signal}")
     b_ssh_client.exec_command(
         f"python {utils.get_script_path(INFO.TEST_SCRIPT_DIR, 'B', INFO.TEST_CASE_NO)}"
@@ -44,29 +47,20 @@ def run_test():
             break
     print('Client b finished')
 
-    # client b is now dead
-    # should read 0
+    # open again
     fd = os.open(INFO.FNAME, os.O_RDONLY)
-    read_str = os.read(fd, 32768).decode('utf-8')
-    utils.check_read_content(read_str, "0"*32768)
+    # check if file is empty
+    stat = os.fstat(fd)
+
+    # check if the file is empty
+    if stat.st_size != 0:
+        logging.info(f"File not empty: size {stat.st_size}")
+        sys.exit(1)
+
+    # close file
     os.close(fd)
 
-    # write something
-    fd = os.open(INFO.FNAME, os.O_WRONLY)
-    os.write(fd, str.encode("2"*32768, 'utf-8'))
-    os.close(fd) 
-
-    # call client b back up
-    b_ssh_client.exec_command(f"touch {INFO.b_signal}")
-
-    while True:
-        if utils.check_file_exists_on_client(b_ssh_client, INFO.b_signal):
-            print("waiting...")
-            time.sleep(1)
-        else:
-            break
-    print('Client b finished')
-
+    # done
     logging.info("OK")
 
 if __name__ == '__main__':
