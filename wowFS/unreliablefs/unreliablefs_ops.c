@@ -982,6 +982,9 @@ int unreliable_fsyncdir(const char *path, int datasync, struct fuse_file_info *f
 
 void *unreliable_init(struct fuse_conn_info *conn)
 {
+    struct unreliablefs_config *cfg = (struct unreliablefs_config *) fuse_get_context()->private_data;
+    std::cout << "unreliable_init: " << cfg->server_address << std::endl;
+    WowManager::Init(cfg->server_address);
     return NULL;
 }
 

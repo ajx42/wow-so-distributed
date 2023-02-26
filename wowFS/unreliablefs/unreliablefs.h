@@ -21,6 +21,7 @@ typedef struct unreliablefs_config {
      unsigned int      seed;
      unsigned int      debug;
      pthread_mutex_t   mutex;
+     char             *server_address;
 } unreliablefs_config;
 
 class WowManager
@@ -28,8 +29,12 @@ class WowManager
 public:
   static WowManager& Instance()
   {
-    static WowManager mgr;
-    return mgr;
+    return InstanceImpl();
+  }
+
+  static void Init(std::string server_address)
+  {
+    InstanceImpl(&server_address);
   }
 
   enum StatSelect {
@@ -45,15 +50,22 @@ public:
   
   WowRPCClient client;
   WowCacheManager cmgr;
+  std::string server_address;
   
   std::string removeMountPrefix(std::string file_path) ;
   StatInfo shouldFetch( std::string path );
   bool writebackToServer( std::string path, int fd );
 private:
   // singleton
-  WowManager() : client(grpc::CreateChannel( 
-    SERVER_ADDRESS, grpc::InsecureChannelCredentials() )) {}
+  WowManager(std::string* const server_address) : 
+    client(grpc::CreateChannel( 
+      move(*server_address), grpc::InsecureChannelCredentials() )) {}
 
+  static WowManager& InstanceImpl(std::string* const server_address = nullptr)
+  {
+    static WowManager mgr(server_address);
+    return mgr;
+  }
 };
 
 inline bool WowManager::writebackToServer( std::string path, int fd )

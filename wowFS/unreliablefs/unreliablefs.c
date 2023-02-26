@@ -32,6 +32,7 @@ enum {
 static struct fuse_opt unreliablefs_opts[] = {
     UNRELIABLEFS_OPT("-seed=%u",           seed, 0),
     UNRELIABLEFS_OPT("-basedir=%s",        basedir, 0),
+    UNRELIABLEFS_OPT("-server_address=%s", server_address, 0),
 
     FUSE_OPT_KEY("-d",             KEY_DEBUG),
     FUSE_OPT_KEY("-V",             KEY_VERSION),
@@ -138,9 +139,12 @@ int main(int argc, char *argv[])
     memset(&conf, 0, sizeof(conf));
     conf.seed = time(0);
     conf.basedir = (char*)"/";
+    conf.server_address = (char*)"localhost:50051";
     fuse_opt_parse(&args, &conf, unreliablefs_opts, unreliablefs_opt_proc);
     srand(conf.seed);
     fprintf(stdout, "random seed = %d\n", conf.seed);
+
+    fprintf(stdout, "server address is = %s\n", conf.server_address);
 
     if (is_dir(conf.basedir) == 0) {
        fprintf(stderr, "basedir ('%s') is not a directory\n", conf.basedir);
@@ -178,7 +182,7 @@ int main(int argc, char *argv[])
     }
 
     fprintf(stdout, "starting FUSE filesystem unreliablefs\n");
-    int ret = fuse_main(args.argc, args.argv, &unreliable_ops, NULL);
+    int ret = fuse_main(args.argc, args.argv, &unreliable_ops, &conf);
 
     /* cleanup */
     fuse_opt_free_args(&args);
