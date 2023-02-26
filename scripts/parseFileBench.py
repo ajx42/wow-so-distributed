@@ -1,5 +1,7 @@
 import sys
 import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
 
 #Class to hold per operation statistics
 class OperationData:
@@ -34,6 +36,7 @@ class TestSummaryData:
 		self.writeOps = []
 		self.bandwidth = []
 		self.avgLatency = []
+
 
 #Key value to use in results dict
 SummaryLabel = "OPERATION_SUMMARY"
@@ -111,6 +114,23 @@ def extractData(f):
 
 	return data
 
+def LatencyGraph(df):
+	df = df.sort_values('avgLatency')
+	plt.barh('labels', 'avgLatency', data=df, align='center', alpha=0.5)
+	plt.ylabel("Workload")
+	plt.xlabel("Average Operation Latency (ms)")
+	plt.title("FileBench: Average Operation Latency")
+	plt.show()
+
+def BandwidthGraph(df):
+	df = df.sort_values('bandwidth')
+	plt.barh('labels', 'bandwidth', data=df, align='center', alpha=0.5)
+	plt.ylabel("Workload")
+	plt.xlabel("Bandwidth (B/s)")
+	plt.title("FileBench: Bandwidth")
+	plt.xscale('log', base=2)
+	plt.show()
+
 
 def main(inFile):
 
@@ -120,13 +140,16 @@ def main(inFile):
 	with open(inFile) as f:
 		data = extractData(f)
 
+	SummaryAvgLatency = []
+	SummaryAvgBW = []
+
 	#Formatting output table
 	gridFormat = "{:30}{:20}{:20}{:20}{:20}{:20}{:20}"
 	gridFormatEntry = "{:30}{:<20.2f}{:<20.2f}{:<20.2f}{:<20.2f}{:<20.2f}{:<20.2f}"
 	labels = gridFormat.format(
 		"Operation", "ops", "ops/s", "mb/s", "ms/op", "Min ms", "Max ms")
 
-	#Per operation results 
+	#Per operation results
 	print("==========Operation BreakDown==========")
 	for k1 in data.keys():
 		print(k1, "----------------------")
@@ -134,19 +157,40 @@ def main(inFile):
 		for k2 in data[k1].keys():
 			entry = data[k1][k2]
 			if k2 != SummaryLabel:
-				print(gridFormatEntry.format(k2, entry.ops.mean(), entry.opRate.mean(),
-					entry.bandwidth.mean(), entry.avgLatency.mean(), entry.minLatency.min(), entry.maxLatency.max()))
+				print(gridFormatEntry.format(k2, entry.ops.mean(), entry.opRate.mean(), entry.bandwidth.mean(
+				), entry.avgLatency.mean(), entry.minLatency.min(), entry.maxLatency.max()))
 
 	#Test summary results
 	print("==========Test Summary==========")
-	summaryColLabels = gridFormat.format("Test", "ops", "ops/s", "rd", "wr", "mb/s", "ms/op")
+	summaryColLabels = gridFormat.format(
+		"Test", "ops", "ops/s", "rd", "wr", "mb/s", "ms/op")
 	print(summaryColLabels)
 	for k1 in data.keys():
 		for k2 in data[k1].keys():
 			if k2 != SummaryLabel:
 				continue
 			entry = data[k1][k2]
-			print(gridFormatEntry.format(k1, entry.ops.mean(), entry.opRate.mean(), entry.readOps.mean(), entry.writeOps.mean(), entry.bandwidth.mean(), entry.avgLatency.mean()))
+			print(gridFormatEntry.format(k1, entry.ops.mean(), entry.opRate.mean(), entry.readOps.mean(
+			), entry.writeOps.mean(), entry.bandwidth.mean(), entry.avgLatency.mean()))
+			SummaryAvgLatency.append(entry.avgLatency.mean())
+			SummaryAvgBW.append(entry.bandwidth.mean() * (2**20))
+
+	y_pos = np.arange(len(data.keys()))
+	print(y_pos)
+	print(SummaryAvgLatency)
+
+	df = pd.DataFrame(
+		dict(
+			labels=data.keys(),
+			avgLatency=SummaryAvgLatency,
+			bandwidth=SummaryAvgBW
+		)
+	)
+
+	LatencyGraph(df)
+	BandwidthGraph(df)
+
+
 
 if __name__ == "__main__":
 	main(sys.argv[1])
