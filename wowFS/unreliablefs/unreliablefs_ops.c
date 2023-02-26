@@ -610,8 +610,9 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
         WowLocalWriteReorder::Instance().Shuffle();
     } else if ( ret == -WOW_REORDER_WRITEBACK_ERROR ) {
         delayWriteback = true;
-    } 
-    else if (ret) {
+    } else if (ret == -ERRNO_WOW_CRASH) {
+        std::terminate();
+    } else if (ret) {
         return ret;
     }
 
