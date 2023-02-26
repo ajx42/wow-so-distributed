@@ -3,6 +3,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 def RunTimeGraph(df):
+	font = {'family' : 'normal',
+        'weight' : 'normal',
+        'size'   : 14}
+	plt.rc('font', **font)
 	plt.bar('jobcount', 'time', data=df, align='center', alpha=0.5)
 	plt.xlabel("Thread Count")
 	plt.ylabel("Build Time (s)")

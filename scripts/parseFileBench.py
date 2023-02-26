@@ -115,6 +115,11 @@ def extractData(f):
 	return data
 
 def LatencyGraph(df):
+	font = {'family' : 'normal',
+        'weight' : 'normal',
+        'size'   : 14}
+	plt.rc('font', **font)
+
 	df = df.sort_values('avgLatency')
 	plt.barh('labels', 'avgLatency', data=df, align='center', alpha=0.5)
 	plt.ylabel("Workload")
@@ -123,6 +128,11 @@ def LatencyGraph(df):
 	plt.show()
 
 def BandwidthGraph(df):
+	font = {'family' : 'normal',
+        'weight' : 'normal',
+        'size'   : 14}
+	plt.rc('font', **font)
+
 	df = df.sort_values('bandwidth')
 	plt.barh('labels', 'bandwidth', data=df, align='center', alpha=0.5)
 	plt.ylabel("Workload")
