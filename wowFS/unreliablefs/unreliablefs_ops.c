@@ -26,7 +26,7 @@
 #include "WowLocalWriteReorder.H"
 #include "unreliablefs_ops.h"
 #include "WowLogger.H"
-#include "WowCloseQueue.H"
+#include "WowWritebackReorderManager.H"
 #include <fstream>
 #include <string>
 #include <vector>
@@ -418,7 +418,7 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
     LogInfo("open: " + std::string(path));
 
     // we need to perform any pending close ops for this file
-    WowCloseQueue::Instance().onFileOp( path );
+    WowWritebackReorderManager::Instance().onFileOp( path );
 
     int ret = error_inject(path, OP_OPEN);
     if (ret == -ERRNO_NOOP) {
@@ -624,7 +624,9 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
     // This writeback here ensures that data goes to the server, provided
     // a user calls flush before close.
     if ( fi->fh > 0 ) {
-      WowManager::Instance().writebackToServer( path, fi->fh );
+      WowWritebackReorderManager::Instance().addNewWriteback(
+        path, *fi, false );
+      // WowManager::Instance().writebackToServer( path, fi->fh );
     }
     
     ret = close(dup(fi->fh));
@@ -638,7 +640,7 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
 int unreliable_release( const char* path, struct fuse_file_info* fi )
 {
   LogInfo("release/queue: " + std::string( path ));
-  WowCloseQueue::Instance().addNewClose( path, *fi );
+  WowWritebackReorderManager::Instance().addNewWriteback( path, *fi, true );
   return 0;
 }
 
