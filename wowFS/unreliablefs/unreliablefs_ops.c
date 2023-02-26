@@ -21,6 +21,7 @@
 
 #define ERRNO_NOOP -999
 #define WOW_REORDER_LOCAL_ERROR 15
+#define WOW_DELAY_ERROR 16
 
 #include "WowLocalWriteReorder.H"
 #include "unreliablefs_ops.h"
@@ -554,15 +555,17 @@ int unreliable_write(const char *path, const char *buf, size_t size,
     int ret = error_inject(path, OP_WRITE);
     if (ret == -ERRNO_NOOP) {
         return 0;
-    } else if (ret) {
+    } 
+    else if(ret == -WOW_REORDER_LOCAL_ERROR || ret == -WOW_DELAY_ERROR) {
+        WowLocalWriteReorder::Instance().RecordWrite(path, buf, size, offset, fi);
+        //Let application think we performed the write
+        return size;
+    }else if (ret) {
         return ret;
     }
 
-    WowLocalWriteReorder::Instance().RecordWrite(path, buf, size, offset, fi);
 
-    //Let application think we performed the write
-    return size;
-    //return wow_write(path, buf, size, offset, fi);
+    return wow_write(path, buf, size, offset, fi);
 }
 
 int unreliable_statfs(const char *path, struct statvfs *buf)
