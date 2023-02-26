@@ -20,8 +20,6 @@
 #endif
 
 #define ERRNO_NOOP -999
-#define WOW_REORDER_LOCAL_ERROR 15
-#define WOW_DELAY_ERROR 16
 
 #include "WowLocalWriteReorder.H"
 #include "unreliablefs_ops.h"
@@ -417,12 +415,12 @@ int unreliable_open(const char *path, struct fuse_file_info *fi)
 {
     LogInfo("open: " + std::string(path));
 
-    // we need to perform any pending close ops for this file
-    WowWritebackReorderManager::Instance().onFileOp( path );
-
     int ret = error_inject(path, OP_OPEN);
     if (ret == -ERRNO_NOOP) {
         return 0;
+    } else if ( ret == -WOW_REORDER_WRITEBACK_ERROR ) {
+      // we need to perform any pending close ops for this file
+      WowWritebackReorderManager::Instance().onFileOp( path );
     } else if (ret) {
         return ret;
     }
@@ -564,7 +562,7 @@ int unreliable_write(const char *path, const char *buf, size_t size,
         WowLocalWriteReorder::Instance().RecordWrite(path, buf, size, offset, fi);
         //Let application think we performed the write
         return size;
-    }else if (ret) {
+    } else if (ret) {
         return ret;
     }
 
@@ -594,7 +592,11 @@ int unreliable_statfs(const char *path, struct statvfs *buf)
 int unreliable_flush(const char *path, struct fuse_file_info *fi)
 {
     LogInfo("flush: " + std::string(path));
-
+    
+    // delay writeback is used based on the WRITEBACK REORDER ERROR
+    // usage
+    bool delayWriteback = false;
+    
     int ret = error_inject(path, OP_FLUSH);
     if (ret == -ERRNO_NOOP) {
         return 0;
@@ -603,11 +605,15 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
         //Shuffle pending writes for out-of-order property
         LogWarn("Running write shuffle");
         WowLocalWriteReorder::Instance().Shuffle();
-    }else if (ret) {
+    } else if ( ret == -WOW_REORDER_WRITEBACK_ERROR ) {
+        delayWriteback = true;
+    } 
+    else if (ret) {
         return ret;
     }
 
-
+    // Note if both the LOCAL REORDER and DELAY errors are disabled then
+    // this queue is going to be empty and we won't be doing any work here!
     for(auto op : *(WowLocalWriteReorder::Instance().GetQueue()))
     {
         LogWarn("Writing : " + op.buf);
@@ -624,9 +630,14 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
     // This writeback here ensures that data goes to the server, provided
     // a user calls flush before close.
     if ( fi->fh > 0 ) {
-      WowWritebackReorderManager::Instance().addNewWriteback(
-        path, *fi, false );
-      // WowManager::Instance().writebackToServer( path, fi->fh );
+      if ( delayWriteback ) { // used for durability testing
+                              // we delay the writeback upon seeing the REORDER
+                              // WRITEBACK ERROR
+        WowWritebackReorderManager::Instance().addNewWriteback(
+          path, *fi, false );
+      } else { // otherwise we just writeback as usual
+        WowManager::Instance().writebackToServer( path, fi->fh );
+      }
     }
     
     ret = close(dup(fi->fh));
@@ -639,22 +650,23 @@ int unreliable_flush(const char *path, struct fuse_file_info *fi)
 
 int unreliable_release( const char* path, struct fuse_file_info* fi )
 {
-  LogInfo("release/queue: " + std::string( path ));
-  WowWritebackReorderManager::Instance().addNewWriteback( path, *fi, true );
-  return 0;
-}
-
-int unreliable_release_impl(const char *path, struct fuse_file_info *fi)
-{
     LogInfo("release: " + std::string(path));
     
     int ret = error_inject(path, OP_RELEASE);
     if (ret == -ERRNO_NOOP) {
         return 0;
+    } else if ( ret == -WOW_REORDER_WRITEBACK_ERROR ){
+      WowWritebackReorderManager::Instance().addNewWriteback( path, *fi, true );
+      return 0;
     } else if (ret) {
         return ret;
     }
 
+    return unreliable_release_impl( path, fi );
+}
+
+int unreliable_release_impl(const char *path, struct fuse_file_info *fi)
+{
     if ( fi == nullptr || fi->fh <= 0 ) {
       LogWarn(std::string(path) + " release called on empty fileinfo");
       return -1; // should this call be considered a success
@@ -674,7 +686,7 @@ int unreliable_release_impl(const char *path, struct fuse_file_info *fi)
 
     auto fd = fi->fh;
 
-    ret = close(fd);
+    auto ret = close(fd);
     // tell CacheManager that the file has been closed
     WowManager::Instance().cmgr.registerFileClose( fd );
 

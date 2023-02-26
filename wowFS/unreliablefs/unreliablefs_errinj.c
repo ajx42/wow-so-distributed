@@ -15,9 +15,6 @@
 #include "unreliablefs.h"
 #include "unreliablefs_errinj.h"
 
-#define WOW_REORDER_LOCAL_ERROR 15
-#define WOW_DELAY_ERROR 16
-
 static int rand_range(int, int);
 int error_inject(const char* path, fuse_op operation);
 
@@ -205,7 +202,7 @@ int error_inject(const char* path, fuse_op operation)
 	switch (err->type) {
         case ERRINJ_WOW_REORDER_LOCAL:
         {
-            if(operation == OP_FLUSH || operation == OP_WRITE)
+            if ( operation == OP_FLUSH || operation == OP_WRITE )
             {
                 rc = -WOW_REORDER_LOCAL_ERROR;
             }
@@ -213,6 +210,13 @@ int error_inject(const char* path, fuse_op operation)
         }
         case ERRINJ_WOW_REORDER_SERVER:
         {
+            // @FIXME: ideally we should be also be handling renames and deletes
+            // but our little workload only involves these 3, so we are not going to handle
+            // anything else for now
+            if ( operation == OP_FLUSH || operation == OP_RELEASE || operation == OP_OPEN )
+            {
+              rc = -WOW_REORDER_WRITEBACK_ERROR;
+            }
             break;
         }
         case ERRINJ_WOW_DELAY:

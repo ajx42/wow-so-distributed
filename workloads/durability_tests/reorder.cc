@@ -1,3 +1,5 @@
+// Associated with errinj_wow_[reorder/delay]_local
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <string>

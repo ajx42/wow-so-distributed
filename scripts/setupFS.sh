@@ -22,6 +22,13 @@ path_regexp = .*
 probability = 100
 EOF
 
+#cat << EOF > /tmp/wowfs_local/unreliablefs.conf
+#[errinj_wow_reorder_server]
+#op_regexp = .*
+#path_regexp = .*
+#probability = 100
+#EOF
+
 #[errinj_wow_delay]
 #op_regexp = .*
 #path_regexp = .*
