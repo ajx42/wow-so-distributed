@@ -21,6 +21,10 @@ class WowFSServiceImpl final : public wowfs::WowFS::Service
 {
 private:
   std::string basedir_;
+
+  // If true, the server will crash during writeback
+  // This is used for testing consistency when server crashes
+  // Disabled by default :)
   bool withCrashOnWrite_;
 public:
   explicit WowFSServiceImpl(const std::string& basedir, bool withCrashOnWrite) {
