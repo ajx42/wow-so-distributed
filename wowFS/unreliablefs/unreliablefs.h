@@ -29,12 +29,12 @@ class WowManager
 public:
   static WowManager& Instance()
   {
-    return InstanceImpl();
+    return InstanceImpl(Sentinel);
   }
 
-  static void Init(std::string server_address)
+  static void Init(std::string serverAddress)
   {
-    InstanceImpl(&server_address);
+    InstanceImpl(serverAddress);
   }
 
   enum StatSelect {
@@ -48,22 +48,26 @@ public:
     int32_t errorCode = 0;
   };
   
+  inline static const std::string Sentinel = "NA";
   WowRPCClient client;
   WowCacheManager cmgr;
-  std::string server_address;
   
   std::string removeMountPrefix(std::string file_path) ;
   StatInfo shouldFetch( std::string path );
   bool writebackToServer( std::string path, int fd );
 private:
   // singleton
-  WowManager(std::string* const server_address) : 
+  WowManager(std::string const serverAddress) : 
     client(grpc::CreateChannel( 
-      move(*server_address), grpc::InsecureChannelCredentials() )) {}
-
-  static WowManager& InstanceImpl(std::string* const server_address = nullptr)
+      serverAddress, grpc::InsecureChannelCredentials() )) 
   {
-    static WowManager mgr(server_address);
+    // assert the serverAddress is not sentinel
+    assert(serverAddress != Sentinel);
+  }
+
+  static WowManager& InstanceImpl(std::string const serverAddress)
+  {
+    static WowManager mgr(serverAddress);
     return mgr;
   }
 };
