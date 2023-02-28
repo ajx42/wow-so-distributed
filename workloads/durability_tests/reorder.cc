@@ -18,8 +18,7 @@ string MESSAGE_ARRAY [] =
 	"Value E\n",
 	"Value F\n",
 	"Value G\n",
-	"Commit\n",
-	WOW_KILL_PHRASE,
+    WOW_KILL_PHRASE,
 };
 
 int main()
