@@ -29,8 +29,8 @@
 # Stops after 1 series of 1024 ($count) writes has been done.
 
 set $dir=/tmp/wowfs/filebench
-set $count=10240
-set $iosize=1m
+set $count=1024000
+set $iosize=2k
 set $nthreads=1
 set $sync=false
 

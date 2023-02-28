@@ -115,6 +115,11 @@ def extractData(f):
 	return data
 
 def LatencyGraph(df):
+	font = {'family' : 'normal',
+        'weight' : 'normal',
+        'size'   : 14}
+	plt.rc('font', **font)
+
 	df = df.sort_values('avgLatency')
 	plt.barh('labels', 'avgLatency', data=df, align='center', alpha=0.5)
 	plt.ylabel("Workload")
@@ -123,12 +128,17 @@ def LatencyGraph(df):
 	plt.show()
 
 def BandwidthGraph(df):
+	font = {'family' : 'normal',
+        'weight' : 'normal',
+        'size'   : 14}
+	plt.rc('font', **font)
+
 	df = df.sort_values('bandwidth')
 	plt.barh('labels', 'bandwidth', data=df, align='center', alpha=0.5)
 	plt.ylabel("Workload")
-	plt.xlabel("Bandwidth (B/s)")
+	plt.xlabel("Bandwidth (MB/s)")
 	plt.title("FileBench: Bandwidth")
-	plt.xscale('log', base=2)
+	plt.xscale('log')
 	plt.show()
 
 
@@ -173,7 +183,7 @@ def main(inFile):
 			print(gridFormatEntry.format(k1, entry.ops.mean(), entry.opRate.mean(), entry.readOps.mean(
 			), entry.writeOps.mean(), entry.bandwidth.mean(), entry.avgLatency.mean()))
 			SummaryAvgLatency.append(entry.avgLatency.mean())
-			SummaryAvgBW.append(entry.bandwidth.mean() * (2**20))
+			SummaryAvgBW.append(entry.bandwidth.mean())
 
 	y_pos = np.arange(len(data.keys()))
 	print(y_pos)
