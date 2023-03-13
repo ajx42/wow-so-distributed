@@ -24,3 +24,6 @@ The project is organised as follows:
 3. `wowUtils`: Other software components namely `WowCache` and `WowLogger`.
 4. `wowAB`: The `wowConcert` distributed test coordination framework.
 5. `workloads`: Filebench, consistency tests, and durability scenarios.
+
+## References
+This project was built using [UnreliableFS](https://github.com/ligurio/unreliablefs).
